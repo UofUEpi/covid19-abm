@@ -1,0 +1,149 @@
+---
+output: github_document
+---
+
+## population.R
+
+The `population.R` script generates an artificial population for the epidemiological
+model. Here we use the data from Toth *et al.* (2021), in particular, the distribution
+of household sizes in Salt Lake City. The simulation has two parts: sampling
+the households and interconnecting individuals between the households.
+
+### Simulating households
+
+1. Set a desired population size, `N_desired`, number of locations, `N_locations`,
+and number of visits each individual does, `N_avg_locations`.
+
+2. Using the data from Toth *et al.*, retrieve a weighed sample of households
+using the observed frequencies as weights.
+
+3. Select the first `H` households sampled such that the sum of their sizes is
+at most `N_desired`. 
+
+4. If the sum of the household sizes is less than `N_desired`, add assign the 
+difference to the last household.
+
+### Interconnecting households
+
+There are many strategies possible to interconnect individuals between households.
+At this time, we will connect individuals based on co-afiliation networks, in particular,
+we will assign individuals to locations at random and create ties between those
+who co-occurr.
+
+One problem with this approach is that, as the population size increases, the
+average number of connections grows as well. Having a network with a significantly
+high mean degree is not desired as in reality density decreases with size.
+
+To formally analyze this, we can calculate the expected mean degree as a function
+of the number of locations in the system and mean number of locations individuals
+go to. Let $i \in N$ denote a population of size $n$, $j \in M$ the set of $m$ 
+locations, and $v$ the number of visited places per individual. Assuming all
+places are equally likely to be visited, the probability individual $i$ visits
+place $j$ is $p_{ij} = 1 - P(i\mbox{ no visit }j) = p$
+which can be calculated as $p = 1 - [1 - 1/m]^{v}$. The probability that individuals
+$i$ and $k$ visit the same place can be computed as follows:
+
+$$
+\begin{align*}
+P(i\leftrightarrow k) & = 1 - P(\neg i \leftrightarrow k) \\
+& = 1 - \prod_m P(\mbox{none in }m) \\
+& = 1 - \prod_m 1 - P(\mbox{both in }m) \\
+& = 1 - \prod_m [1 - P(i\in m, k\in m)] \\
+& = 1 - \prod_m [1 - P(i\in m) P(j\in m)] \\
+& \mbox{Since both are symmetrical} \\
+& = 1 - \prod_m (1 - p^2) \\
+& = 1 - [1 - p^2]^{m}
+\end{align*}
+$$
+
+This way, the expected degree of the system is then
+
+$$
+\begin{align*}
+\mathbb{E}(degree) & = \left[1 - [1 - p^2]^{m}\right]\times(N - 1) \\
+& = \left\{1 - \left[1 - (1 - [1 - 1/m]^{v})^2\right]^{m}\right\}\times(N - 1) \\
+& = \left\{1 - \left[2(1 - 1/m)^v - (1 - 1/m)^{2v}\right]^{m}\right\}\times(N - 1)
+\end{align*}
+$$
+The following code-block performs a brief simulation study to validate this result:
+
+```{r simul-example, cache = TRUE}
+library(data.table)
+n <- 400
+m <- 50
+v <- 2
+
+# Expected degree
+expected_deg <- function(n, m, v) {
+  (n - 1) * (1 - (2*(1 - 1/m)^v - (1 - 1/m)^(2 * v)) ^ m)
+} 
+
+expected_deg(n, m, v)
+
+# Running a simulation
+set.seed(7123)
+N     <- 1:n
+nsims <- 10000
+M     <- 1:m
+
+p <- 1 - (1 - 1/m)^v
+
+Visits <- array(runif(n * m * nsims) < p, dim = c(n, m, nsims))
+
+sim <- parallel::mclapply(1:nsims, \(i) {
+  
+  # Sampling per individual
+  visits <- which(Visits[,,i], arr.ind = TRUE)
+
+  visits <- data.table(
+    id = visits[,1],
+    loc = visits[,2]
+  )
+
+  # Creating the bipartite graph  
+  visits <- merge(
+    visits[, .(ego = id, loc)],
+    visits[, .(alter = id, loc)],
+    by = "loc", allow.cartesian = TRUE, all = TRUE
+  )[, loc:=NULL] |> unique()
+  
+  # Retrieving the edgelist
+  visits <- visits[, .(ego = fifelse(ego > alter, ego, alter), alter = fifelse(ego > alter, alter, ego))]
+  visits <- unique(visits)[ego != alter,]
+  
+  # Calculating the degree
+  sum(table(visits[,c(ego, alter)]))/n
+  
+}, mc.cores = 6L) |> unlist()
+
+hist(sim)
+mean(sim)
+```
+
+Thus, as the number of individuals grows, the mean degree increases as well
+
+```{r fig1, echo = FALSE}
+curve(
+  expected_deg(x, m, v), from = 100, to = 1000,
+  xlab = "Population size", ylab = "Mean Degree",
+  lwd = 2, lty = 1, main = "Mean degree as a function of population size and locations"
+  )
+
+curve(
+  expected_deg(x, m * 2, v), from = 100, to = 1000,
+  xlab = "Population size", ylab = "Mean Degree",
+  add = TRUE, lwd = 2, lty = 2
+  )
+
+curve(
+  expected_deg(x, m * 4, v), from = 100, to = 1000,
+  xlab = "Population size", ylab = "Mean Degree",
+  add = TRUE, lwd = 2, lty = 3
+  )
+
+legend(
+  "topleft", bty = "n",
+  legend = sprintf("%i locations", m * c(1,2,4)),
+  lty = c(1,2,3), lwd = 2
+)
+```
