@@ -1,9 +1,16 @@
 library(data.table)
 
 set.seed(7778)
+# This setup yields a mean degree of 25.09
 N_desired       <- 10000
-N_locations     <- ceiling(N_desired/200)
-N_avg_locations <- 1
+N_locations     <- ceiling(N_desired/100)
+N_avg_locations <- .5
+
+expected_deg <- function(n, m, v) {
+  (n - 1) * (1 - (2*(1 - 1/m)^v - (1 - 1/m)^(2 * v)) ^ m)
+} 
+
+expected_deg(N_desired, N_locations, N_avg_locations)
 
 toth <- fread("model-saltlake/data-raw/analysisData.txt")
 
@@ -46,26 +53,34 @@ if (nrow(sizes) < N_desired)
       id        = max(sizes$id) + 1L:(N_desired - nrow(sizes))
     ))
 
-# Building ties between individuals
-loc_size <- rpois(N_desired, N_avg_locations)
+# Building ties between individuals --------------------------------------------
+p_visit <- 1 - (1 - 1/N_locations)^N_avg_locations
 
-locations <- data.table(
-  id  = rep(sizes$id, loc_size), 
-  loc = sample.int(N_locations, sum(loc_size), replace = TRUE)
-) |> unique()
+# Sampling visits
+visits <- which(matrix(
+  runif(N_locations * N_desired) < p_visit, ncol = N_desired
+), arr.ind = TRUE)
 
-locations <- merge(
-  locations[,.(ego = id, loc)],
-  locations[,.(alter = id, loc)],
-  by = "loc", allow.cartesian = TRUE
+visits <- data.table(
+  id  = visits[,1] - 1L,
+  loc = visits[,2]
 )
 
-locations <- locations[, .(
-  ego   = fifelse(ego > alter, ego, alter),
-  alter = fifelse(ego > alter, alter, ego)
-  )] |> unique()
+# Creating the bipartite graph  
+visits <- merge(
+  visits[, .(ego = id, loc)],
+  visits[, .(alter = id, loc)],
+  by = "loc", allow.cartesian = TRUE, all = TRUE
+)[, loc:=NULL] |> unique()
 
+# Retrieving the edgelist
+visits <- visits[, .(ego = fifelse(ego > alter, ego, alter), alter = fifelse(ego > alter, alter, ego))]
+visits <- unique(visits)[ego != alter,]
 
-locations[, .(n = .N), by = .(ego)][, hist(n)]
-locations[, .(n = .N), by = .(ego)][, quantile(n, prob = c(.025,.5,.975))]
-locations[, .(n = .N), by = .(ego)][, mean(n)]
+mean(table(visits[, c(ego, alter)])) # 22.2 as expected
+hist(table(visits[, c(ego, alter)]))
+
+saveRDS(
+  list(households = sizes, outsize_contacts = visits),
+  file = "model-saltlake/data/population.rds"
+)
