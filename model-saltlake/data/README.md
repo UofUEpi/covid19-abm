@@ -44,17 +44,12 @@ denote a population of size
 the set of
 ![m](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;m "m")
 locations, and
-![v](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;v "v")
-the number of visited places per individual. Assuming all places are
-equally likely to be visited, the probability individual
-![i](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;i "i")
-visits place
-![j](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;j "j")
-is
-![p\_{ij} = 1 - P(i\\mbox{ no visit }j) = p](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;p_%7Bij%7D%20%3D%201%20-%20P%28i%5Cmbox%7B%20no%20visit%20%7Dj%29%20%3D%20p "p_{ij} = 1 - P(i\mbox{ no visit }j) = p")
-which can be calculated as
-![p = 1 - \[1 - 1/m\]^{v}](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;p%20%3D%201%20-%20%5B1%20-%201%2Fm%5D%5E%7Bv%7D "p = 1 - [1 - 1/m]^{v}").
-The probability that individuals
+![\\mu_v](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%5Cmu_v "\mu_v")
+the mean number of visits per individual, with
+![v\\sim\\mbox{Binom}(m, \\mu_v/m)](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;v%5Csim%5Cmbox%7BBinom%7D%28m%2C%20%5Cmu_v%2Fm%29 "v\sim\mbox{Binom}(m, \mu_v/m)").
+Assuming all. Let
+![p=\\mu_v/m](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;p%3D%5Cmu_v%2Fm "p=\mu_v/m");
+the probability that individuals
 ![i](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;i "i")
 and
 ![k](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;k "k")
@@ -63,24 +58,24 @@ visit the same place can be computed as follows:
 ![
 \\begin{align\*}
 P(i\\leftrightarrow k) & = 1 - P(\\neg i \\leftrightarrow k) \\\\
-& = 1 - \\prod_m P(\\mbox{none in }m) \\\\
-& = 1 - \\prod_m 1 - P(\\mbox{both in }m) \\\\
+& = 1 - \\prod_m P(\\mbox{not both in }m) \\\\
+& = 1 - \\prod_m \[1 - P(\\mbox{both in }m)\] \\\\
 & = 1 - \\prod_m \[1 - P(i\\in m, k\\in m)\] \\\\
 & = 1 - \\prod_m \[1 - P(i\\in m) P(j\\in m)\] \\\\
 & \\mbox{Since both are symmetrical} \\\\
-& = 1 - \\prod_m (1 - p^2) \\\\
-& = 1 - \[1 - p^2\]^{m}
+& = 1 - \\prod_m (1 - (\\mu_v/m)^2) \\\\
+& = 1 - \[1 - (\\mu_v/m)^2\]^{m}
 \\end{align\*}
-](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0AP%28i%5Cleftrightarrow%20k%29%20%26%20%3D%201%20-%20P%28%5Cneg%20i%20%5Cleftrightarrow%20k%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20P%28%5Cmbox%7Bnone%20in%20%7Dm%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%201%20-%20P%28%5Cmbox%7Bboth%20in%20%7Dm%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%2C%20k%5Cin%20m%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%29%20P%28j%5Cin%20m%29%5D%20%5C%5C%0A%26%20%5Cmbox%7BSince%20both%20are%20symmetrical%7D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%281%20-%20p%5E2%29%20%5C%5C%0A%26%20%3D%201%20-%20%5B1%20-%20p%5E2%5D%5E%7Bm%7D%0A%5Cend%7Balign%2A%7D%0A "
+](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0AP%28i%5Cleftrightarrow%20k%29%20%26%20%3D%201%20-%20P%28%5Cneg%20i%20%5Cleftrightarrow%20k%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20P%28%5Cmbox%7Bnot%20both%20in%20%7Dm%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28%5Cmbox%7Bboth%20in%20%7Dm%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%2C%20k%5Cin%20m%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%29%20P%28j%5Cin%20m%29%5D%20%5C%5C%0A%26%20%5Cmbox%7BSince%20both%20are%20symmetrical%7D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%281%20-%20%28%5Cmu_v%2Fm%29%5E2%29%20%5C%5C%0A%26%20%3D%201%20-%20%5B1%20-%20%28%5Cmu_v%2Fm%29%5E2%5D%5E%7Bm%7D%0A%5Cend%7Balign%2A%7D%0A "
 \begin{align*}
 P(i\leftrightarrow k) & = 1 - P(\neg i \leftrightarrow k) \\
-& = 1 - \prod_m P(\mbox{none in }m) \\
-& = 1 - \prod_m 1 - P(\mbox{both in }m) \\
+& = 1 - \prod_m P(\mbox{not both in }m) \\
+& = 1 - \prod_m [1 - P(\mbox{both in }m)] \\
 & = 1 - \prod_m [1 - P(i\in m, k\in m)] \\
 & = 1 - \prod_m [1 - P(i\in m) P(j\in m)] \\
 & \mbox{Since both are symmetrical} \\
-& = 1 - \prod_m (1 - p^2) \\
-& = 1 - [1 - p^2]^{m}
+& = 1 - \prod_m (1 - (\mu_v/m)^2) \\
+& = 1 - [1 - (\mu_v/m)^2]^{m}
 \end{align*}
 ")
 
@@ -88,36 +83,49 @@ This way, the expected degree of the system is then
 
 ![
 \\begin{align\*}
-\\mathbb{E}(degree) & = \\left\[1 - \[1 - p^2\]^{m}\\right\]\\times(N - 1) \\\\
-& = \\left\\{1 - \\left\[1 - (1 - \[1 - 1/m\]^{v})^2\\right\]^{m}\\right\\}\\times(N - 1) \\\\
-& = \\left\\{1 - \\left\[2(1 - 1/m)^v - (1 - 1/m)^{2v}\\right\]^{m}\\right\\}\\times(N - 1)
+\\mathbb{E}(degree) & = \\left\[1 - \[1 - (\\mu_v/m)^2\]^{m}\\right\]\\times(N - 1)
 \\end{align\*}
-](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0A%5Cmathbb%7BE%7D%28degree%29%20%26%20%3D%20%5Cleft%5B1%20-%20%5B1%20-%20p%5E2%5D%5E%7Bm%7D%5Cright%5D%5Ctimes%28N%20-%201%29%20%5C%5C%0A%26%20%3D%20%5Cleft%5C%7B1%20-%20%5Cleft%5B1%20-%20%281%20-%20%5B1%20-%201%2Fm%5D%5E%7Bv%7D%29%5E2%5Cright%5D%5E%7Bm%7D%5Cright%5C%7D%5Ctimes%28N%20-%201%29%20%5C%5C%0A%26%20%3D%20%5Cleft%5C%7B1%20-%20%5Cleft%5B2%281%20-%201%2Fm%29%5Ev%20-%20%281%20-%201%2Fm%29%5E%7B2v%7D%5Cright%5D%5E%7Bm%7D%5Cright%5C%7D%5Ctimes%28N%20-%201%29%0A%5Cend%7Balign%2A%7D%0A "
+](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0A%5Cmathbb%7BE%7D%28degree%29%20%26%20%3D%20%5Cleft%5B1%20-%20%5B1%20-%20%28%5Cmu_v%2Fm%29%5E2%5D%5E%7Bm%7D%5Cright%5D%5Ctimes%28N%20-%201%29%0A%5Cend%7Balign%2A%7D%0A "
 \begin{align*}
-\mathbb{E}(degree) & = \left[1 - [1 - p^2]^{m}\right]\times(N - 1) \\
-& = \left\{1 - \left[1 - (1 - [1 - 1/m]^{v})^2\right]^{m}\right\}\times(N - 1) \\
-& = \left\{1 - \left[2(1 - 1/m)^v - (1 - 1/m)^{2v}\right]^{m}\right\}\times(N - 1)
+\mathbb{E}(degree) & = \left[1 - [1 - (\mu_v/m)^2]^{m}\right]\times(N - 1)
 \end{align*}
 ")
+
+Furthermore, the degree is distributed binomial with mean
+![1 - \[1 - (\\mu_v/m)^2\]^m](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;1%20-%20%5B1%20-%20%28%5Cmu_v%2Fm%29%5E2%5D%5Em "1 - [1 - (\mu_v/m)^2]^m")
+and size
+![N - 1](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;N%20-%201 "N - 1")
+(which explains the result we obtained with the expected degree).
+
+As the number of individuals grows so does mean degree. In this case, if
+we wire the individuals through a bipartite graph, then we have to take
+into consideration that individuals may tend then to have a large number
+of connections in large systems, which may not reflect reality.
+
+![Expected degree as a function of Number of locations and average
+visits](README_files/figure-gfm/figure-levelplot-1.png)
+
+From the figure we can see that, for example, in a system with 50,000
+agents, 400 locations, and each visiting an average of two locations,
+the expected degree is 498.
+
+## Appendix
+
+### Checking predicted mean degree
 
 The following code-block performs a brief simulation study to validate
 this result:
 
 ``` r
 library(data.table)
-n <- 400
-m <- 50
-v <- 2
+n    <- 400
+m    <- 50
+mu_v <- 1
 
-# Expected degree
-expected_deg <- function(n, m, v) {
-  (n - 1) * (1 - (2*(1 - 1/m)^v - (1 - 1/m)^(2 * v)) ^ m)
-} 
-
-expected_deg(n, m, v)
+expected_deg(n, m, mu_v)
 ```
 
-    ## [1] 30.11244
+    ## [1] 7.902294
 
 ``` r
 # Running a simulation
@@ -126,9 +134,7 @@ N     <- 1:n
 nsims <- 10000
 M     <- 1:m
 
-p <- 1 - (1 - 1/m)^v
-
-Visits <- array(runif(n * m * nsims) < p, dim = c(n, m, nsims))
+Visits <- array(runif(n * m * nsims) < mu_v/m, dim = c(n, m, nsims))
 
 sim <- parallel::mclapply(1:nsims, \(i) {
   
@@ -165,9 +171,4 @@ hist(sim)
 mean(sim)
 ```
 
-    ## [1] 30.11834
-
-Thus, as the number of individuals grows, the mean degree increases as
-well
-
-![](README_files/figure-gfm/fig1-1.png)<!-- -->
+    ## [1] 7.899339

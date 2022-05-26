@@ -37,22 +37,19 @@ high mean degree is not desired as in reality density decreases with size.
 To formally analyze this, we can calculate the expected mean degree as a function
 of the number of locations in the system and mean number of locations individuals
 go to. Let $i \in N$ denote a population of size $n$, $j \in M$ the set of $m$ 
-locations, and $v$ the number of visited places per individual. Assuming all
-places are equally likely to be visited, the probability individual $i$ visits
-place $j$ is $p_{ij} = 1 - P(i\mbox{ no visit }j) = p$
-which can be calculated as $p = 1 - [1 - 1/m]^{v}$. The probability that individuals
-$i$ and $k$ visit the same place can be computed as follows:
+locations, and $\mu_v$ the mean number of visits per individual, with $v\sim\mbox{Binom}(m, \mu_v/m)$. Assuming all. Let $p=\mu_v/m$; the probability that individuals $i$ and $k$ visit the same place
+can be computed as follows:
 
 $$
 \begin{align*}
 P(i\leftrightarrow k) & = 1 - P(\neg i \leftrightarrow k) \\
-& = 1 - \prod_m P(\mbox{none in }m) \\
-& = 1 - \prod_m 1 - P(\mbox{both in }m) \\
+& = 1 - \prod_m P(\mbox{not both in }m) \\
+& = 1 - \prod_m [1 - P(\mbox{both in }m)] \\
 & = 1 - \prod_m [1 - P(i\in m, k\in m)] \\
 & = 1 - \prod_m [1 - P(i\in m) P(j\in m)] \\
 & \mbox{Since both are symmetrical} \\
-& = 1 - \prod_m (1 - p^2) \\
-& = 1 - [1 - p^2]^{m}
+& = 1 - \prod_m (1 - (\mu_v/m)^2) \\
+& = 1 - [1 - (\mu_v/m)^2]^{m}
 \end{align*}
 $$
 
@@ -60,25 +57,78 @@ This way, the expected degree of the system is then
 
 $$
 \begin{align*}
-\mathbb{E}(degree) & = \left[1 - [1 - p^2]^{m}\right]\times(N - 1) \\
-& = \left\{1 - \left[1 - (1 - [1 - 1/m]^{v})^2\right]^{m}\right\}\times(N - 1) \\
-& = \left\{1 - \left[2(1 - 1/m)^v - (1 - 1/m)^{2v}\right]^{m}\right\}\times(N - 1)
+\mathbb{E}(degree) & = \left[1 - [1 - (\mu_v/m)^2]^{m}\right]\times(N - 1)
 \end{align*}
 $$
+Furthermore, the degree is distributed binomial with mean $1 - [1 - (\mu_v/m)^2]^m$
+and size $N - 1$ (which explains the result we obtained with the expected degree).
+
+As the number of individuals grows so does mean degree. 
+In this case, if we wire the individuals through a bipartite graph, then we have
+to take into consideration that individuals may tend then to have a large number
+of connections in large systems, which may not reflect reality.
+
+```{r figure-levelplot, echo = FALSE, fig.cap="Expected degree as a function of Number of locations\nand average visits"}
+library(ggplot2)
+
+# Expected degree
+expected_deg <- function(n, m, mu_v) {
+  (n - 1) * (1 - (1 - (mu_v/m)^2) ^ m)
+} 
+
+N <- c(1000, 10000, 50000, 100000)
+nout <- 50
+Mu_v <- seq(from = .1, to = 5, length.out = nout)
+dat <- NULL
+for (n in N) {
+  M <- rev(floor((seq(from = 100, to = 500, length.out = nout))))
+  D <- outer(Mu_v, M, \(mu_v, m) expected_deg(n, m, mu_v))
+  
+  dat <- rbind(dat, data.frame(
+    n      = n,
+    degree = as.vector(D),
+    m      = sort(rep(M, nout)),
+    mu_v   = Mu_v
+  ))
+}
+
+labs_n <- labeller(n = setNames(
+  paste(
+    formatC(
+      N, big.mark = ",", format="g", digits = 10,
+      width = nchar(sprintf("%i", max(N))) + 2
+      ), " agents"
+    )|> trimws(which = "both"), N))
+
+ggplot(dat, aes(x = m, y = mu_v, z = degree)) +
+    facet_wrap(~n, labeller = labs_n) + 
+    geom_contour_filled(
+      breaks = round(exp(seq(log(1), log(10000), length.out = 15)))
+    ) +
+  labs(
+    x = "Number of Locations",
+    y = "Average Number of Visits\n(binomial dist)",
+    fill = "Mean Degree"
+    )
+```
+
+From the figure we can see that, for example, in a system with 50,000 agents,
+400 locations, and each visiting an average of two locations, the expected degree
+is `r prettyNum(round(expected_deg(50000, 400, 2)), big.mark = ",")`.
+
+## Appendix
+
+### Checking predicted mean degree
+
 The following code-block performs a brief simulation study to validate this result:
 
 ```{r simul-example, cache = TRUE}
 library(data.table)
-n <- 400
-m <- 50
-v <- 2
+n    <- 400
+m    <- 50
+mu_v <- 1
 
-# Expected degree
-expected_deg <- function(n, m, v) {
-  (n - 1) * (1 - (2*(1 - 1/m)^v - (1 - 1/m)^(2 * v)) ^ m)
-} 
-
-expected_deg(n, m, v)
+expected_deg(n, m, mu_v)
 
 # Running a simulation
 set.seed(7123)
@@ -86,9 +136,7 @@ N     <- 1:n
 nsims <- 10000
 M     <- 1:m
 
-p <- 1 - (1 - 1/m)^v
-
-Visits <- array(runif(n * m * nsims) < p, dim = c(n, m, nsims))
+Visits <- array(runif(n * m * nsims) < mu_v/m, dim = c(n, m, nsims))
 
 sim <- parallel::mclapply(1:nsims, \(i) {
   
@@ -120,30 +168,3 @@ hist(sim)
 mean(sim)
 ```
 
-Thus, as the number of individuals grows, the mean degree increases as well
-
-```{r fig1, echo = FALSE}
-curve(
-  expected_deg(x, m, v), from = 100, to = 1000,
-  xlab = "Population size", ylab = "Mean Degree",
-  lwd = 2, lty = 1, main = "Mean degree as a function of population size and locations"
-  )
-
-curve(
-  expected_deg(x, m * 2, v), from = 100, to = 1000,
-  xlab = "Population size", ylab = "Mean Degree",
-  add = TRUE, lwd = 2, lty = 2
-  )
-
-curve(
-  expected_deg(x, m * 4, v), from = 100, to = 1000,
-  xlab = "Population size", ylab = "Mean Degree",
-  add = TRUE, lwd = 2, lty = 3
-  )
-
-legend(
-  "topleft", bty = "n",
-  legend = sprintf("%i locations", m * c(1,2,4)),
-  lty = c(1,2,3), lwd = 2
-)
-```
