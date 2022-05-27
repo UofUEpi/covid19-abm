@@ -58,23 +58,23 @@ visit the same place can be computed as follows:
 ![
 \\begin{align\*}
 P(i\\leftrightarrow k) & = 1 - P(\\neg i \\leftrightarrow k) \\\\
-& = 1 - \\prod_m P(\\mbox{not both in }m) \\\\
-& = 1 - \\prod_m \[1 - P(\\mbox{both in }m)\] \\\\
-& = 1 - \\prod_m \[1 - P(i\\in m, k\\in m)\] \\\\
-& = 1 - \\prod_m \[1 - P(i\\in m) P(j\\in m)\] \\\\
+& = 1 - \\prod\_{j\\in M} P(\\mbox{not both in }j) \\\\
+& = 1 - \\prod\_{j\\in M} \[1 - P(\\mbox{both in }j)\] \\\\
+& = 1 - \\prod\_{j\\in M} \[1 - P(i\\in j, k\\in j)\] \\\\
+& = 1 - \\prod\_{j\\in M} \[1 - P(i\\in j) P(k\\in j)\] \\\\
 & \\mbox{Since both are symmetrical} \\\\
-& = 1 - \\prod_m (1 - (\\mu_v/m)^2) \\\\
+& = 1 - \\prod\_{j\\in M} (1 - (\\mu_v/m)^2) \\\\
 & = 1 - \[1 - (\\mu_v/m)^2\]^{m}
 \\end{align\*}
-](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0AP%28i%5Cleftrightarrow%20k%29%20%26%20%3D%201%20-%20P%28%5Cneg%20i%20%5Cleftrightarrow%20k%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20P%28%5Cmbox%7Bnot%20both%20in%20%7Dm%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28%5Cmbox%7Bboth%20in%20%7Dm%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%2C%20k%5Cin%20m%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%5B1%20-%20P%28i%5Cin%20m%29%20P%28j%5Cin%20m%29%5D%20%5C%5C%0A%26%20%5Cmbox%7BSince%20both%20are%20symmetrical%7D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_m%20%281%20-%20%28%5Cmu_v%2Fm%29%5E2%29%20%5C%5C%0A%26%20%3D%201%20-%20%5B1%20-%20%28%5Cmu_v%2Fm%29%5E2%5D%5E%7Bm%7D%0A%5Cend%7Balign%2A%7D%0A "
+](https://latex.codecogs.com/png.image?%5Cdpi%7B110%7D&space;%5Cbg_white&space;%0A%5Cbegin%7Balign%2A%7D%0AP%28i%5Cleftrightarrow%20k%29%20%26%20%3D%201%20-%20P%28%5Cneg%20i%20%5Cleftrightarrow%20k%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_%7Bj%5Cin%20M%7D%20P%28%5Cmbox%7Bnot%20both%20in%20%7Dj%29%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_%7Bj%5Cin%20M%7D%20%5B1%20-%20P%28%5Cmbox%7Bboth%20in%20%7Dj%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_%7Bj%5Cin%20M%7D%20%5B1%20-%20P%28i%5Cin%20j%2C%20k%5Cin%20j%29%5D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_%7Bj%5Cin%20M%7D%20%5B1%20-%20P%28i%5Cin%20j%29%20P%28k%5Cin%20j%29%5D%20%5C%5C%0A%26%20%5Cmbox%7BSince%20both%20are%20symmetrical%7D%20%5C%5C%0A%26%20%3D%201%20-%20%5Cprod_%7Bj%5Cin%20M%7D%20%281%20-%20%28%5Cmu_v%2Fm%29%5E2%29%20%5C%5C%0A%26%20%3D%201%20-%20%5B1%20-%20%28%5Cmu_v%2Fm%29%5E2%5D%5E%7Bm%7D%0A%5Cend%7Balign%2A%7D%0A "
 \begin{align*}
 P(i\leftrightarrow k) & = 1 - P(\neg i \leftrightarrow k) \\
-& = 1 - \prod_m P(\mbox{not both in }m) \\
-& = 1 - \prod_m [1 - P(\mbox{both in }m)] \\
-& = 1 - \prod_m [1 - P(i\in m, k\in m)] \\
-& = 1 - \prod_m [1 - P(i\in m) P(j\in m)] \\
+& = 1 - \prod_{j\in M} P(\mbox{not both in }j) \\
+& = 1 - \prod_{j\in M} [1 - P(\mbox{both in }j)] \\
+& = 1 - \prod_{j\in M} [1 - P(i\in j, k\in j)] \\
+& = 1 - \prod_{j\in M} [1 - P(i\in j) P(k\in j)] \\
 & \mbox{Since both are symmetrical} \\
-& = 1 - \prod_m (1 - (\mu_v/m)^2) \\
+& = 1 - \prod_{j\in M} (1 - (\mu_v/m)^2) \\
 & = 1 - [1 - (\mu_v/m)^2]^{m}
 \end{align*}
 ")
