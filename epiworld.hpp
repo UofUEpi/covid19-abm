@@ -1424,7 +1424,7 @@ inline void DataBase<TSeq>::set_model(Model<TSeq> & m)
     // Initializing the counts
     today_total.resize(m.nstatus);
     std::fill(today_total.begin(), today_total.end(), 0);
-    for (auto & p : *m.get_population())
+    for (auto & p : *m.get_agents())
         ++today_total[p.get_status()];
     
     transition_matrix.resize(m.nstatus * m.nstatus);
@@ -2255,7 +2255,7 @@ inline void AdjList::read_edgelist(
     while (!filei.eof())
     {
 
-        if (linenum < skip)
+        if (linenum++ < skip)
             continue;
 
         filei >> i >> j;
@@ -2299,11 +2299,11 @@ inline void AdjList::read_edgelist(
 
     }
 
-    if (!filei.eof())
-        throw std::logic_error(
-            "Wrong format found in the AdjList file " +
-            fn + " in line " + std::to_string(linenum)
-        );
+    // if (!filei.eof())
+    //     throw std::logic_error(
+    //         "Wrong format found in the AdjList file " +
+    //         fn + " in line " + std::to_string(linenum)
+    //     );
     
     // Now using the right constructor
     *this = AdjList(source_,target_,directed,min_id,max_id);
@@ -2442,7 +2442,7 @@ inline void rewire_degseq(
     std::vector< unsigned int > non_isolates;
     std::vector< epiworld_double > weights;
     epiworld_double nedges = 0.0;
-    // std::vector< Agent<TSeq> > * agents = model->get_population();
+    // std::vector< Agent<TSeq> > * agents = model->get_agents();
     for (unsigned int i = 0u; i < agents->size(); ++i)
     {
         if (agents->operator[](i).get_neighbors().size() > 0u)
@@ -2553,7 +2553,7 @@ inline void rewire_degseq(
     std::vector< unsigned int > non_isolates;
     std::vector< epiworld_double > weights;
     epiworld_double nedges = 0.0;
-    // std::vector< Agent<TSeq> > * agents = model->get_population();
+    // std::vector< Agent<TSeq> > * agents = model->get_agents();
     for (auto & p : agents->get_dat())
     {
         
@@ -3190,17 +3190,17 @@ public:
      * @param al AdjList to read into the model.
      */
     ///@{
-    void population_from_adjlist(
+    void agents_from_adjlist(
         std::string fn,
         int skip = 0,
         bool directed = false,
         int min_id = -1,
         int max_id = -1
         );
-    void population_from_adjlist(AdjList al);
+    void agents_from_adjlist(AdjList al);
     bool is_directed() const;
-    std::vector< Agent<TSeq> > * get_population();
-    void population_smallworld(
+    std::vector< Agent<TSeq> > * get_agents();
+    void agents_smallworld(
         unsigned int n = 1000,
         unsigned int k = 5,
         bool d = false,
@@ -3774,20 +3774,20 @@ inline DataBase<TSeq> & Model<TSeq>::get_db()
 }
 
 template<typename TSeq>
-inline std::vector<Agent<TSeq>> * Model<TSeq>::get_population()
+inline std::vector<Agent<TSeq>> * Model<TSeq>::get_agents()
 {
     return &population;
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::population_smallworld(
+inline void Model<TSeq>::agents_smallworld(
     unsigned int n,
     unsigned int k,
     bool d,
     epiworld_double p
 )
 {
-    population_from_adjlist(
+    agents_from_adjlist(
         rgraph_smallworld(n, k, p, d, *this)
     );
 }
@@ -4173,7 +4173,7 @@ inline void Model<TSeq>::add_tool_n(Tool<TSeq> t, unsigned int preval)
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::population_from_adjlist(
+inline void Model<TSeq>::agents_from_adjlist(
     std::string fn,
     int skip,
     bool directed,
@@ -4183,12 +4183,12 @@ inline void Model<TSeq>::population_from_adjlist(
 
     AdjList al;
     al.read_edgelist(fn, skip, directed, min_id, max_id);
-    this->population_from_adjlist(al);
+    this->agents_from_adjlist(al);
 
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::population_from_adjlist(AdjList al) {
+inline void Model<TSeq>::agents_from_adjlist(AdjList al) {
 
     // Resizing the people
     population.clear();
@@ -6643,6 +6643,132 @@ inline void Tool<TSeq>::get_queue(
 //////////////////////////////////////////////////////////////////////////////*/
 
 
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld/location-bones.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_LOCATION_BONES_HPP
+#define EPIWORLD_LOCATION_BONES_HPP
+
+template<typename TSeq>
+class Agent;
+
+template<typename TSeq>
+class Location {
+private:
+    
+    int capacity = 0;
+    std::string location_name = "Unknown Location";
+
+    std::vector< Agent<TSeq> * > agents;
+    size_t n_agents = 0u;
+
+    /**
+     * @brief Spatial location parameters
+     * 
+     */
+    ///@{
+    epiworld_double longitude = 0.0;
+    epiworld_double latitude  = 0.0;
+    epiworld_double altitude  = 0.0;
+    ///@}
+
+public:
+
+    Location() {};
+
+    void add_agent(Agent<TSeq> & p);
+    void add_agent(Agent<TSeq> * p);
+    void rm_agent(size_t idx);
+    size_t size() const noexcept;
+    void set_location(int lon, int lat, int alt = 0);
+
+    typename std::vector< Agent<TSeq> * >::iterator begin();
+    typename std::vector< Agent<TSeq> * >::iterator end();
+
+};
+
+template<typename TSeq>
+inline void Location<TSeq>::add_agent(Agent<TSeq> & p)
+{
+    if (++n_agents <= agents.size())
+        agents.push_back(&p);
+    else
+        agents[n_agents - 1] = &p;
+}
+
+template<typename TSeq>
+inline void Location<TSeq>::add_agent(Agent<TSeq> * p)
+{
+    if (++n_agents <= agents.size())
+        agents.push_back(p);
+    else
+        agents[n_agents - 1] = p;
+}
+
+template<typename TSeq>
+inline void Location<TSeq>::rm_agent(size_t idx)
+{
+    if (idx >= n_agents)
+        throw std::out_of_range(
+            "Trying to remove agent "+ std::to_string(idx) +
+            " out of " + std::to_string(n_agents)
+            );
+
+    if (--n_agents > 0)
+        std::swap(agents[idx], agents[n_agents]);
+
+    return;
+}
+
+template<typename TSeq>
+inline size_t Location<TSeq>::size() const noexcept
+{
+    return n_agents;
+}
+
+template<typename TSeq>
+inline void Location<TSeq>::set_location(int lon, int lat, int alt)
+{
+    longitude = lon;
+    latitude  = lat;
+    altitude  = alt;
+}
+
+template<typename TSeq>
+inline typename std::vector< Agent<TSeq> * >::iterator Location<TSeq>::begin()
+{
+
+    if (n_agents == 0)
+        return agents.end();
+
+    return agents.begin();
+
+}
+
+template<typename TSeq>
+inline typename std::vector< Agent<TSeq> * >::iterator Location<TSeq>::end()
+{
+    return agents.begin() + n_agents;
+}
+
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld/location-bones.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
     
 /*//////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -6865,8 +6991,9 @@ private:
     Model<TSeq> * model;
     
     std::vector< Agent<TSeq> * > neighbors;
+    std::vector< Location<TSeq> *> locations;
 
-    unsigned int index; ///< Location in the Model
+    int index; ///< Location in the Model
     epiworld_fast_uint status = 0u;
     int id = -1;
     
@@ -7170,6 +7297,11 @@ inline Agent<TSeq>::Agent(const Agent<TSeq> & p)
     index  = p.index;
     status = p.status;
     id     = p.id;
+
+    #ifdef EPI_DEBUG
+    if (index < 0)
+        throw std::logic_error("Index in agents cannot be negative.");
+    #endif
     
     in_queue = p.in_queue;
 
@@ -7198,9 +7330,9 @@ inline Agent<TSeq>::Agent(const Agent<TSeq> & p)
     n_tools = p.n_tools;
 
     add_virus_ = p.add_virus_;
-    add_tool_ = p.add_tool_;
-    rm_virus_ = p.rm_virus_;
-    rm_tool_ = p.rm_tool_;
+    add_tool_  = p.add_tool_;
+    rm_virus_  = p.rm_virus_;
+    rm_tool_   = p.rm_tool_;
     
 }
 

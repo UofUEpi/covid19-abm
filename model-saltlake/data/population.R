@@ -37,21 +37,30 @@ setnames(
 toth[, sum(household_size * freq)] # Total population
 
 # Building the synthetic population --------------------------------------------
-sizes <- toth[, sample(household_size, size = N_desired, replace = TRUE, prob = freq)]
-sizes <- data.table(sizes, cum_size = cumsum(sizes))
-sizes <- sizes[cum_size <= N_desired]
-sizes[, household := 1L:.N]
-sizes <- sizes[, .(household = rep(household, sizes))]
-sizes[, id := (1L:.N) - 1]
+households <- toth[, sample(household_size, size = N_desired, replace = TRUE, prob = freq)]
+households <- data.table(households, cum_size = cumsum(households))
+households <- households[cum_size <= N_desired]
+households[, household := 1L:.N]
+households <- households[, .(household = rep(household, households))]
+households[, id := (1L:.N) - 1]
 
 # Adding the reminder
-if (nrow(sizes) < N_desired)
-  sizes <- rbind(
-    sizes,
+if (nrow(households) < N_desired)
+  households <- rbind(
+    households,
     data.table(
-      household = max(sizes$household),
-      id        = max(sizes$id) + 1L:(N_desired - nrow(sizes))
+      household = max(households$household),
+      id        = max(households$id) + 1L:(N_desired - nrow(households))
     ))
+
+households <- merge(
+  households[,.(household, ego = id)],
+  households[,.(household, alter = id)], 
+  allow.cartesian = TRUE
+)[ego != alter]
+
+households <- households[, .(ego = fifelse(ego < alter, ego, alter), alter = fifelse(ego < alter, alter, ego))]
+households <- unique(households)
 
 # Building ties between individuals --------------------------------------------
 p_visit <- 1 - (1 - 1/N_locations)^N_avg_locations
@@ -74,13 +83,19 @@ visits <- merge(
 )[, loc:=NULL] |> unique()
 
 # Retrieving the edgelist
-visits <- visits[, .(ego = fifelse(ego > alter, ego, alter), alter = fifelse(ego > alter, alter, ego))]
+visits <- visits[, .(ego = fifelse(ego > alter, alter, ego), alter = fifelse(ego > alter, ego, alter))]
 visits <- unique(visits)[ego != alter,]
 
 mean(table(visits[, c(ego, alter)])) # 22.2 as expected
 hist(table(visits[, c(ego, alter)]))
 
 saveRDS(
-  list(households = sizes, outsize_contacts = visits),
+  list(households = households, outsize_contacts = visits),
   file = "model-saltlake/data/population.rds"
+)
+
+fwrite(
+  unique(rbind(households, visits)),
+  file = "model-saltlake/data/population.txt",
+  sep = " ", col.names = FALSE
 )
