@@ -4228,6 +4228,14 @@ inline void Model<TSeq>::agents_from_adjlist(AdjList al) {
 
     }
 
+    #ifdef EPI_DEBUG
+    for (auto & p: population)
+    {
+        if (p.index < 0)
+            throw std::logic_error("Agent's location index cannot be negative!");
+    }
+    #endif
+
 }
 
 template<typename TSeq>
@@ -4490,12 +4498,17 @@ inline void Model<TSeq>::write_edgelist(
     ) const
 {
 
+    // Figuring out the writing sequence
+    std::vector< const Agent<TSeq> * > wseq(size());
+    for (const auto & p: population)
+        wseq[p.index] = &p;
+
     std::ofstream efile(fn, std::ios_base::out);
     efile << "source target\n";
-    for (const auto & p : population)
+    for (const auto & p : wseq)
     {
-        for (auto & n : p.neighbors)
-            efile << p.id << " " << n->id << "\n";
+        for (auto & n : p->neighbors)
+            efile << p->id << " " << n->id << "\n";
     }
 
 }

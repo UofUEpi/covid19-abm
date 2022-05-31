@@ -33,6 +33,7 @@ int main()
 
     // Reading in the population
     model.agents_from_adjlist("../data/population.txt", 0, false, 0, 9999);
+    model.write_edgelist("../data/population-model-written.txt");
 
     // Setting up the parameters
     model.add_param(.9, "Prob. Infecting");
