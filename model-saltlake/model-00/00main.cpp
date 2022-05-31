@@ -1,4 +1,4 @@
-#define EPI_DEBUG
+// #define EPI_DEBUG
 
 #include "../../epiworld.hpp"
 
@@ -23,6 +23,8 @@ EPI_NEW_UPDATEFUN(update_exposed, int)
 int main()
 {
 
+    int nreplicates = 1000;
+
     // Baseline Configuration
     Model<> model;
     model.add_status("Susceptible", default_update_susceptible<>);
@@ -32,7 +34,7 @@ int main()
     model.add_status("Removed");
 
     // Reading in the population
-    model.agents_from_adjlist("../data/population.txt", 0, false, 0, 9999);
+    model.agents_from_adjlist("../data/population.txt", 10000, 0, false);
     model.write_edgelist("../data/population-model-written.txt");
 
     // Setting up the parameters
@@ -43,7 +45,7 @@ int main()
     Virus<> omicron("Omicron");
     omicron.set_status(1, 3, 4);
 
-    omicron.get_data().resize(0);
+    omicron.get_data().resize(1u);
 
     omicron.set_prob_infecting(&model("Prob. Infecting"));
     omicron.set_prob_recovery(&model("Prob. Recovery"));
@@ -54,7 +56,7 @@ int main()
     model.init(100, 223);
 
     // Function to record each replicate results 
-    std::vector< std::vector< int > > results(1000);
+    std::vector< std::vector< int > > results(nreplicates);
     std::vector< std::string > labels;
     unsigned int nreplica = 0u;
 
@@ -72,11 +74,34 @@ int main()
         };
 
     model.run_multiple(
-        1000,   // How many experiments
-        record, // Function to call after each experiment
-        true,   // Whether to reset the population
-        true    // Whether to print a progress bar
+        nreplicates, // How many experiments
+        record,      // Function to call after each experiment
+        true,        // Whether to reset the population
+        true         // Whether to print a progress bar
         );
+
+    // Saving results
+    std::ofstream file("00main-results.csv", std::ios_base::out);
+    
+    file << "\"replica";
+
+    for (size_t i = 0; i < labels.size(); ++i)
+        file << "\",\"" <<labels[i];
+
+    file << "\"\n";
+
+    for (size_t i = 0u; i < nreplica; ++i)
+    {
+        
+        // Replica number
+        file << i;
+
+        for (size_t j = 0u; j < labels.size(); ++j)
+            file << "," << results[i][j];
+
+        file << "\n";
+        
+    }
 
     model.print();
 

@@ -1,0 +1,23 @@
+---
+output: github_document
+---
+
+# Model 0 for Salt Lake City
+
+```{bash}
+./00main.o
+```
+
+```{r posterior-dist, dev="svg"}
+library(data.table)
+library(ggplot2)
+dat <- fread("00main-results.csv")
+dat <- melt(dat, id.vars = "replica")
+
+ggplot(dat, aes(y = value, x = variable)) +
+    geom_boxplot() +
+    labs(
+        x = "State", y = "Counts (out of 10,000)",
+        title = "Distribution of cases after 1,000 replicates"
+        )
+```
