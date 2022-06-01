@@ -1,5 +1,4 @@
 // #define EPI_DEBUG
-
 #include "../../epiworld.hpp"
 
 using namespace epiworld;
@@ -13,7 +12,7 @@ EPI_NEW_UPDATEFUN(update_exposed, int)
     
     // If no days have passed, then sample the
     // number of days needed
-    if (days_since == 0)
+    if (days_since <= 1)
         virus->get_data()[0u] = m->rgamma(7, 1);
     else if (days_since >= virus->get_data()[0u])
         p->change_status(2);
@@ -53,56 +52,16 @@ int main()
 
     model.add_virus(omicron, .05);
 
-    model.init(100, 223);
+    model.init(100, 223); 
 
-    // Function to record each replicate results 
-    std::vector< std::vector< int > > results(nreplicates);
-    std::vector< std::string > labels;
-    unsigned int nreplica = 0u;
-
-    auto record =
-        [&results,&nreplica,&labels](epiworld::Model<> * m)
-        {
-
-            if (nreplica == 0u)
-                m->get_db().get_today_total(nullptr, &results[nreplica++]);
-            else
-                m->get_db().get_today_total(&labels, &results[nreplica++]);
-
-            return;
-
-        };
-
+    // Running multiple simulations. The results will be stored in the folder
+    // "results/", with each replicate named "0000_total_hist.csv"
     model.run_multiple(
-        nreplicates, // How many experiments
-        record,      // Function to call after each experiment
-        true,        // Whether to reset the population
-        true         // Whether to print a progress bar
+        nreplicates, 
+        save_run<>("results/%04lu")
         );
 
-    // Saving results
-    std::ofstream file("00main-results.csv", std::ios_base::out);
-    
-    file << "\"replica";
-
-    for (size_t i = 0; i < labels.size(); ++i)
-        file << "\",\"" <<labels[i];
-
-    file << "\"\n";
-
-    for (size_t i = 0u; i < nreplica; ++i)
-    {
-        
-        // Replica number
-        file << i;
-
-        for (size_t j = 0u; j < labels.size(); ++j)
-            file << "," << results[i][j];
-
-        file << "\n";
-        
-    }
-
+    // Printing the results
     model.print();
 
 }

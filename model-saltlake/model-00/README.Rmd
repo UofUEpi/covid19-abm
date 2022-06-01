@@ -4,20 +4,58 @@ output: github_document
 
 # Model 0 for Salt Lake City
 
+This simulation model features the following:
+
+1. Five different states: Susceptible, Exposed, Infected, Recovered, and Removed.
+
+2. The population size is 10,000 individuals, all connected at the household level,
+ and between households.
+
+3. A baseline probability of infection is .9.
+
+4. Daily recovery rate for an infected agent is `1/7`.
+
+5. Daily death rate for an infected agent is .01.
+
+6. There is one virus that starts with 5% of the population exposed.
+
+7. The simulation lasts 100 days, and replicated a thousand times.
+
+The implementation details can be found in [00main.cpp](00main.cpp). After
+compilation, the execution of the program results in the following output:
+
 ```{bash}
 ./00main.o
 ```
 
-```{r posterior-dist, dev="svg"}
+Statuses' trajectories have the following distribution:
+
+```{r posterior-dist, dev="svg", echo = FALSE}
 library(data.table)
 library(ggplot2)
-dat <- fread("00main-results.csv")
-dat <- melt(dat, id.vars = "replica")
+dat <- lapply(list.files("results", full.names = TRUE), fread)
+dat <- Map(\(d, i) d[, r := i], d = dat, i = seq_along(dat) - 1) |>
+    rbindlist()
 
-ggplot(dat, aes(y = value, x = variable)) +
-    geom_boxplot() +
+summ <- dat[, .(
+    `2.5%`  = quantile(counts, probs = .025),
+    Mean    = mean(counts),
+    `97.5%` = quantile(counts, prob = .975)
+    ), by = .(date, status)][
+        date %inrange% c(1,30)][
+            status != "Susceptible"]
+
+setorder(summ, status, date)
+
+ggplot(summ, aes(x = date, colour = status)) +
+    geom_ribbon(aes(
+        y = Mean, ymin = `2.5%`, ymax = `97.5%`,
+        colour = status
+        ), alpha = .3) +
+    geom_line(aes(y = Mean)) +
     labs(
-        x = "State", y = "Counts (out of 10,000)",
+        x = "Day", y = "Counts",
         title = "Distribution of cases after 1,000 replicates"
-        )
+        ) 
 ```
+
