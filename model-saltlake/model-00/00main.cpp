@@ -61,6 +61,8 @@ int main()
         save_run<>("results/%04lu")
         );
 
+    model.get_db().reproductive_number("reproductive_number.txt");
+
     // Printing the results
     model.print();
 
