@@ -7,3 +7,7 @@ levels: Salt Lake City, in Utah (US), and the entire United States.
 Resulting reports
 
 - Salt Lake City (model 0) ([link](model-saltlake/model-00/)).
+
+# Data sources
+
+- Google's COVID-19 Open Data Repository: https://health.google.com/covid-19/open-data/

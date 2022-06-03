@@ -6,3 +6,6 @@ This model uses data from
 
 Which can be found [here](https://github.com/UofUEpi/householdTransmission)
 
+## Data
+
+- Salt Lake County COVID-19 data: https://slco.org/globalassets/1-site-files/health/programs/covid/download.zip
