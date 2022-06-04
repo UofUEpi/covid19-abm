@@ -42,7 +42,7 @@ summ <- dat[, .(
     Mean    = mean(counts),
     `97.5%` = quantile(counts, prob = .975)
     ), by = .(date, status)][
-        date %inrange% c(1,30)][
+        date %inrange% c(1, 100)][
             status != "Susceptible"]
 
 setorder(summ, status, date)
