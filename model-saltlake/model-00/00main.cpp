@@ -19,7 +19,7 @@ EPI_NEW_UPDATEFUN(update_exposed, int)
 
     auto virus = p->get_virus(0u);
     int days_since = m->today() - virus->get_date();
-    
+
     // If no days have passed, then sample the
     // number of days needed
     if (days_since <= 1)
@@ -36,6 +36,11 @@ EPI_NEW_UPDATEFUN(update_infected_symp, int)
     m->array_double_tmp[0u] = v->get_prob_recovery() * p->get_recovery_enhancer(v);
     m->array_double_tmp[0u] = m->par("Prob. Hospitalization");
 
+    if (p->has_tool("Vaccine"))
+        m->array_double_tmp[0u] = m->par("Vax Prob. Hospitalization");
+    else
+        m->array_double_tmp[0u] = m->par("Prob. Hospitalization");
+
     int which = roulette(2, m);
 
     if (which < 0)
@@ -51,6 +56,8 @@ EPI_NEW_UPDATEFUN(update_infected_symp, int)
 
 
 }
+
+
 
 EPI_NEW_UPDATEFUN(update_hospitalized, int)
 {
@@ -76,6 +83,37 @@ EPI_NEW_UPDATEFUN(update_hospitalized, int)
 
 }
 
+// Vaccine efficacy decays through time
+EPI_NEW_TOOL(vax_efficacy, int)
+{
+
+    epiworld_double days = m->today() - v->get_date();
+    return 
+        m->par("Vax Efficacy") *
+            std::pow((1 - days), m->par("Vax Efficacy decay"));
+}
+
+// Vaccine improved recovery decays also
+EPI_NEW_TOOL(vax_recovery, int)
+{
+    epiworld_double days = m->today() - v->get_date();
+    return 
+        m->par("Recovery enhance") *
+            std::pow(1 - days, m->par("Vax Efficacy decay"));
+    
+}
+
+// Vaccine and so does dying
+EPI_NEW_TOOL(vax_death, int)
+{
+    epiworld_double days = m->today() - v->get_date();
+    return 
+        m->par("Vax Death redux") *
+            std::pow(1 - days, m->par("Vax Efficacy decay"));
+}
+
+
+
 int main()
 {
 
@@ -100,19 +138,36 @@ int main()
     model.add_param(1.0/7.0, "Prob. Recovery");
     model.add_param(.01, "Prob. death");
     model.add_param(.05, "Prob. Hospitalization");
+    model.add_param(.8, "Mask redux transmission");
+    model.add_param(.9, "Vax Efficacy");
+    model.add_param(.5, "Vax Efficacy decay");
+    model.add_param(.95, "Vax Death redux");
+    model.add_param(.5, "Vax Recovery enhance");
+    model.add_param(.01, "Vax Prob. Hospitalization");
 
+    // Designing virus
     Virus<> omicron("Omicron");
     omicron.set_status(Status::Exposed, Status::Recovered, Status::Removed);
-
     omicron.get_data().resize(1u);
-
     omicron.set_prob_infecting(&model("Prob. Infecting"));
     omicron.set_prob_recovery(&model("Prob. Recovery"));
     omicron.set_prob_death(&model("Prob. death"));
-
     model.add_virus(omicron, .05);
 
-    model.init(100, 223); 
+    // Designing Mask wearing
+    Tool<> mask("Mask");
+    mask.set_transmission_reduction(&model("Mask redux transmission"));
+    model.add_tool(mask, .3);
+
+    // Designing Vaccine
+    Tool<> vax("Vaccine");
+    vax.set_susceptibility_reduction_fun(vax_efficacy);
+    vax.set_recovery_enhancer_fun(vax_recovery);
+    vax.set_death_reduction_fun(vax_death);
+    
+    model.add_tool(vax, .6);
+
+    model.init(60, 223); 
 
     // Running multiple simulations. The results will be stored in the folder
     // "results/", with each replicate named "0000_total_hist.csv"

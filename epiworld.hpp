@@ -1398,7 +1398,7 @@ inline epiworld_double kernel_fun_uniform(
 
 }
 
-constexpr epiworld_double sqrt2pi() {return std::sqrt(2.0 * M_PI);};
+constexpr epiworld_double sqrt2pi() {return std::sqrt(2.0 * M_PI);}
 
 /**
  * @brief Gaussian kernel
@@ -4656,10 +4656,10 @@ public:
     ///@{
     epiworld_double add_param(epiworld_double initial_val, std::string pname);
     epiworld_double set_param(std::string pname);
-    epiworld_double get_param(unsigned int k);
-    epiworld_double get_param(std::string pname);
-    epiworld_double par(unsigned int k);
-    epiworld_double par(std::string pname);
+    constexpr epiworld_double get_param(unsigned int k);
+    constexpr epiworld_double get_param(std::string pname);
+    constexpr epiworld_double par(unsigned int k);
+    constexpr epiworld_double par(std::string pname);
     epiworld_double 
         *p0,*p1,*p2,*p3,*p4,*p5,*p6,*p7,*p8,*p9,
         *p10,*p11,*p12,*p13,*p14,*p15,*p16,*p17,*p18,*p19,
@@ -6410,7 +6410,7 @@ inline epiworld_double Model<TSeq>::set_param(
 }
 
 template<typename TSeq>
-inline epiworld_double Model<TSeq>::get_param(std::string pname)
+inline constexpr epiworld_double Model<TSeq>::get_param(std::string pname)
 {
     if (parameters.find(pname) == parameters.end())
         throw std::logic_error("The parameter " + pname + " does not exists.");
@@ -6419,7 +6419,7 @@ inline epiworld_double Model<TSeq>::get_param(std::string pname)
 }
 
 template<typename TSeq>
-inline epiworld_double Model<TSeq>::par(std::string pname)
+inline constexpr epiworld_double Model<TSeq>::par(std::string pname)
 {
     return parameters[pname];
 }
