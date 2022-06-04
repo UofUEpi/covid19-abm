@@ -40,7 +40,7 @@ output:
     ## Days (duration)    : 100 (of 100)
     ## Number of variants : 1
     ## Last run elapsed t : 0.00s
-    ## Total elapsed t    : 6.00s (1000 runs)
+    ## Total elapsed t    : 8.00s (1000 runs)
     ## Rewiring           : off
     ## 
     ## Virus(es):
@@ -50,16 +50,19 @@ output:
     ##  (none)
     ## 
     ## Model parameters:
-    ##  - Prob. Infecting : 0.9000
-    ##  - Prob. Recovery  : 0.1429
-    ##  - Prob. death     : 0.0100
+    ##  - Prob. Hospitalization : 0.0500
+    ##  - Prob. Infecting       : 0.9000
+    ##  - Prob. Recovery        : 0.1429
+    ##  - Prob. death           : 0.0100
     ## 
     ## Distribution of the population at time 100:
-    ## - (0) Susceptible :  9500 -> 8058
-    ## - (1) Exposed     :   500 -> 0
-    ## - (2) Infected    :     0 -> 0
-    ## - (3) Recovered   :     0 -> 1823
-    ## - (4) Removed     :     0 -> 119
+    ## - (0) Susceptible           :  9500 -> 8058
+    ## - (1) Exposed               :   500 -> 0
+    ## - (2) Infected Asymptomatic :     0 -> 0
+    ## - (3) Infected Symptomatic  :     0 -> 0
+    ## - (4) Hospitalized          :     0 -> 0
+    ## - (5) Recovered             :     0 -> 1823
+    ## - (6) Removed               :     0 -> 119
 
 Statuses’ trajectories have the following distribution:
 

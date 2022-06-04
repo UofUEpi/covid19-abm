@@ -102,7 +102,7 @@ int main()
     model.add_param(.05, "Prob. Hospitalization");
 
     Virus<> omicron("Omicron");
-    omicron.set_status(1, 3, 4);
+    omicron.set_status(Status::Exposed, Status::Recovered, Status::Removed);
 
     omicron.get_data().resize(1u);
 
