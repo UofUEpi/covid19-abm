@@ -33,7 +33,7 @@ Statuses' trajectories have the following distribution:
 ```{r posterior-dist, dev="svg", echo = FALSE}
 library(data.table)
 library(ggplot2)
-dat <- lapply(list.files("results", full.names = TRUE), fread)
+dat <- lapply(list.files("results",  pattern = "total_hist", full.names = TRUE), fread)
 dat <- Map(\(d, i) d[, r := i], d = dat, i = seq_along(dat) - 1) |>
     rbindlist()
 

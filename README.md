@@ -11,3 +11,4 @@ Resulting reports
 # Data sources
 
 - Google's COVID-19 Open Data Repository: https://health.google.com/covid-19/open-data/
+- Helathdata.gov COVID Reported Hospitalizations: https://healthdata.gov/Hospital/COVID-19-Reported-Patient-Impact-and-Hospital-Capa/g62h-syeh

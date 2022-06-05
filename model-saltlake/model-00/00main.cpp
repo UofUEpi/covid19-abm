@@ -24,12 +24,15 @@ EPI_NEW_UPDATEFUN(update_exposed, int)
     // number of days needed
     if (days_since <= 1)
         virus->get_data()[0u] = m->rgamma(7, 1);
-    else if (days_since >= virus->get_data()[0u])
+
+    if (days_since >= virus->get_data()[0u])
     {
+
         if (m->par("Prob. Dev. Symptoms") > m->runif())
             p->change_status(Status::InfectedSymp);
         else
             p->change_status(Status::InfectedAsymp);
+
     }
 
 }
@@ -84,7 +87,10 @@ EPI_NEW_UPDATEFUN(update_hospitalized, int)
     auto virus = p->get_virus(0u);
     
     // Evaluating probabilities
-    m->array_double_tmp[0u] = virus->get_prob_death() * p->get_death_reduction(virus);
+    m->array_double_tmp[0u] =
+        m->par("Prob. death") *
+        (1.0 - p->get_death_reduction(virus));
+
     m->array_double_tmp[1u] = 1.0 - 
         (1.0 - virus->get_prob_recovery()) * 
         (1.0 - p->get_recovery_enhancer(virus));
@@ -108,7 +114,7 @@ EPI_NEW_TOOL(vax_efficacy, int)
     epiworld_double days = m->today() - v->get_date();
     return 
         m->par("Vax Efficacy") *
-            std::pow((1 - days), m->par("Vax Efficacy decay"));
+            std::pow(1/days, m->par("Vax Efficacy decay"));
 }
 
 // Vaccine improved recovery decays also
@@ -116,26 +122,24 @@ EPI_NEW_TOOL(vax_recovery, int)
 {
     epiworld_double days = m->today() - v->get_date();
     return 
-        m->par("Recovery enhance") *
-            std::pow(1 - days, m->par("Vax Efficacy decay"));
+        m->par("Vax Recovery enhance") *
+            std::pow(1/days, m->par("Vax Efficacy decay"));
     
 }
 
 // Vaccine and so does dying
 EPI_NEW_TOOL(vax_death, int)
 {
-    epiworld_double days = m->today() - v->get_date();
+    epiworld_double days = m->today() - t.get_date();
     return 
         m->par("Vax Death redux") *
-            std::pow(1 - days, m->par("Vax Efficacy decay"));
+            std::pow(1/days, m->par("Vax Efficacy decay"));
 }
-
-
 
 int main()
 {
 
-    int nreplicates = 500;
+    int nreplicates = 1000;
 
     // Baseline Configuration
     Model<> model;
@@ -155,8 +159,8 @@ int main()
     model.add_param(.9, "Prob. Infecting");
     model.add_param(.7, "Prob. Dev. Symptoms");
     model.add_param(1.0/7.0, "Prob. Recovery");
-    model.add_param(.01, "Prob. death");
     model.add_param(.05, "Prob. Hospitalization");
+    model.add_param(.30, "Prob. death");
     model.add_param(.8, "Mask redux transmission");
     model.add_param(.9, "Vax Efficacy");
     model.add_param(.5, "Vax Efficacy decay");
@@ -171,12 +175,12 @@ int main()
     omicron.set_prob_infecting(&model("Prob. Infecting"));
     omicron.set_prob_recovery(&model("Prob. Recovery"));
     omicron.set_prob_death(&model("Prob. death"));
-    model.add_virus(omicron, .1);
+    model.add_virus(omicron, .05);
 
     // Designing Mask wearing
     Tool<> mask("Mask");
     mask.set_transmission_reduction(&model("Mask redux transmission"));
-    model.add_tool(mask, .3);
+    model.add_tool(mask, .1);
 
     // Designing Vaccine
     Tool<> vax("Vaccine");
@@ -192,7 +196,15 @@ int main()
     // "results/", with each replicate named "0000_total_hist.csv"
     model.run_multiple(
         nreplicates, 
-        save_run<>("results/%04lu")
+        save_run<>("results/%04lu",
+            true,  // History
+            false,
+            false,
+            false,
+            false,
+            false,
+            true   // Transitions
+            )
         );
 
     model.get_db().reproductive_number("reproductive_number.txt");
