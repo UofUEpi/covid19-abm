@@ -40,7 +40,7 @@ output:
     ## Days (duration)    : 60 (of 60)
     ## Number of variants : 1
     ## Last run elapsed t : 0.00s
-    ## Total elapsed t    : 21.00s (1000 runs)
+    ## Total elapsed t    : 22.00s (1000 runs)
     ## Rewiring           : off
     ## 
     ## Virus(es):
@@ -64,22 +64,22 @@ output:
     ##  - Vax Recovery enhance      : 0.5000
     ## 
     ## Distribution of the population at time 60:
-    ##  - (0) Susceptible           :  9500 -> 8115
+    ##  - (0) Susceptible           :  9500 -> 8075
     ##  - (1) Exposed               :   500 -> 0
-    ##  - (2) Infected Symptomatic  :     0 -> 268
+    ##  - (2) Infected Symptomatic  :     0 -> 254
     ##  - (3) Infected Asymptomatic :     0 -> 0
-    ##  - (4) Hospitalized          :     0 -> 15
-    ##  - (5) Recovered             :     0 -> 1153
-    ##  - (6) Removed               :     0 -> 449
+    ##  - (4) Hospitalized          :     0 -> 13
+    ##  - (5) Recovered             :     0 -> 1169
+    ##  - (6) Removed               :     0 -> 489
     ## 
     ## Transition Probabilities:
-    ##  -           Susceptible  1.00  0.00  0.00  0.00  0.00  0.00  0.00
-    ##  -               Exposed  0.00  0.71  0.18  0.11  0.00  0.00  0.00
-    ##  -  Infected Symptomatic  0.00  0.00  0.97  0.00  0.02  0.01  0.00
-    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.82  0.00  0.18  0.00
-    ##  -          Hospitalized  0.00  0.00  0.00  0.00  0.63  0.12  0.25
-    ##  -             Recovered  0.00  0.00  0.00  0.00  0.00  1.00  0.00
-    ##  -               Removed  0.00  0.00  0.00  0.00  0.00  0.00  1.00
+    ##  - Susceptible            1.00  0.00  0.00  0.00  0.00  0.00  0.00
+    ##  - Exposed                0.00  0.69  0.24  0.07  0.00  0.00  0.00
+    ##  - Infected Symptomatic   0.00  0.00  0.97  0.00  0.02  0.01  0.00
+    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.84  0.00  0.16  0.00
+    ##  - Hospitalized           0.00  0.00  0.00  0.00  0.60  0.14  0.25
+    ##  - Recovered              0.00  0.00  0.00  0.00  0.00  1.00  0.00
+    ##  - Removed                0.00  0.00  0.00  0.00  0.00  0.00  1.00
 
 Statuses’ trajectories have the following distribution:
 

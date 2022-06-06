@@ -111,7 +111,7 @@ EPI_NEW_UPDATEFUN(update_hospitalized, int)
 EPI_NEW_TOOL(vax_efficacy, int)
 {
 
-    epiworld_double days = m->today() - v->get_date();
+    epiworld_double days = m->today() - t.get_date();
     return 
         m->par("Vax Efficacy") *
             std::pow(1/days, m->par("Vax Efficacy decay"));
@@ -120,7 +120,7 @@ EPI_NEW_TOOL(vax_efficacy, int)
 // Vaccine improved recovery decays also
 EPI_NEW_TOOL(vax_recovery, int)
 {
-    epiworld_double days = m->today() - v->get_date();
+    epiworld_double days = m->today() - t.get_date();
     return 
         m->par("Vax Recovery enhance") *
             std::pow(1/days, m->par("Vax Efficacy decay"));
