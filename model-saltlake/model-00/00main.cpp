@@ -79,8 +79,6 @@ EPI_NEW_UPDATEFUN(update_infected_asymp, int)
 
 }
 
-
-
 EPI_NEW_UPDATEFUN(update_hospitalized, int)
 {
 
@@ -203,17 +201,13 @@ int main()
             false,
             false,
             false,
-            true   // Transitions
+            true,  // Transitions
+            true
             )
         );
 
-    model.get_db().reproductive_number("reproductive_number.txt");
-
     // Printing the results
     model.print();
-
-    // Printing transition probabilities
-    auto tprob = model.get_db().transition_probability(true);
     
     return 0;
 

@@ -84,3 +84,9 @@ output:
 Statuses’ trajectories have the following distribution:
 
 ![](README_files/figure-gfm/posterior-dist-1.svg)<!-- -->
+
+Distribution of the reproductive number
+
+    ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+
+![](README_files/figure-gfm/rep-num-1.svg)<!-- -->

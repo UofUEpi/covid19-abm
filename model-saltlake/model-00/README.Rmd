@@ -59,3 +59,17 @@ ggplot(summ, aes(x = date, colour = status)) +
         ) 
 ```
 
+Distribution of the reproductive number
+
+```{r rep-num, dev="svg", echo = FALSE}
+repnum <- lapply(
+    list.files("results", pattern = "repro", full.names = TRUE), fread
+)
+
+repnum <- sapply(repnum, \(x) x[, mean(rt)]) |>
+    data.table() |> setnames("rt")
+ggplot(repnum, aes(x = rt)) +
+    geom_histogram() + 
+    labs(x = "Reproductive Number", y = "Count",
+    title = "Distribution of Reproductive number after 1,000 replicates")
+```
