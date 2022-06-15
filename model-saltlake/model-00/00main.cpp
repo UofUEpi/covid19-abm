@@ -29,9 +29,9 @@ EPI_NEW_UPDATEFUN(update_exposed, int)
     {
 
         if (m->par("Prob. Dev. Symptoms") > m->runif())
-            p->change_status(Status::InfectedSymp);
+            p->change_status(Status::InfectedSymp, QueueValues::Everyone);
         else
-            p->change_status(Status::InfectedAsymp);
+            p->change_status(Status::InfectedAsymp, QueueValues::NoOne);
 
     }
 
@@ -54,9 +54,9 @@ EPI_NEW_UPDATEFUN(update_infected_symp, int)
         return;
 
     if (which == 0u)
-        p->rm_virus(v, Status::Recovered);
+        p->rm_virus(v, Status::Recovered, -QueueValues::Everyone);
     else
-        p->change_status(Status::Hospitalized);
+        p->change_status(Status::Hospitalized, -QueueValues::Everyone);
         
 
     return;
@@ -73,7 +73,7 @@ EPI_NEW_UPDATEFUN(update_infected_asymp, int)
         (1.0 - p->get_recovery_enhancer(v));
 
     if (m->runif() < prec)
-        p->rm_virus(v, Status::Recovered);
+        p->rm_virus(v, Status::Recovered, -QueueValues::OnlySelf);
     
     return;
 
@@ -99,9 +99,9 @@ EPI_NEW_UPDATEFUN(update_hospitalized, int)
         return;
 
     if (which == 0u)
-        p->rm_virus(virus, Status::Removed);
+        p->rm_virus(virus, Status::Removed, -QueueValues::OnlySelf);
     else
-        p->rm_virus(virus, Status::Recovered);
+        p->rm_virus(virus, Status::Recovered, -QueueValues::OnlySelf);
 
 }
 
@@ -146,6 +146,11 @@ EPI_NEW_GLOBALFUN(contact, int)
             size_t nvariants_tmp = 0u;
             for (auto & neighbor: neighbors) 
             {
+
+                // Only infected individuals can pass the virus
+                epiworld_fast_uint neighbor_status = neighbor->get_status();
+                if ((neighbor_status != Status::InfectedSymp) & (neighbor_status != Status::InfectedAsymp))
+                    continue;
                         
                 for (const VirusPtr<int> & v : neighbor->get_viruses()) 
                 { 
@@ -178,7 +183,7 @@ EPI_NEW_GLOBALFUN(contact, int)
             if (which < 0)
                 continue;
 
-            a.add_virus(*(m->array_virus_tmp[which])); 
+            a.add_virus(*(m->array_virus_tmp[which]), Status::Exposed, QueueValues::OnlySelf); 
 
         }
 
@@ -193,7 +198,7 @@ int main()
 
     // Baseline Configuration
     Model<> model;
-    model.add_status("Susceptible", default_update_susceptible<>);
+    model.add_status("Susceptible", sampler::make_update_susceptible<>({Status::Exposed, Status::Hospitalized}));
     model.add_status("Exposed", update_exposed);
     model.add_status("Infected Symptomatic", update_infected_symp);
     model.add_status("Infected Asymptomatic", update_infected_asymp);
@@ -221,6 +226,7 @@ int main()
     // Designing virus
     Virus<> omicron("Omicron");
     omicron.set_status(Status::Exposed, Status::Recovered, Status::Removed);
+    omicron.set_queue(QueueValues::OnlySelf, QueueValues::NoOne, QueueValues::NoOne);
     omicron.get_data().resize(1u);
     omicron.set_prob_infecting(&model("Prob. Infecting"));
     omicron.set_prob_recovery(&model("Prob. Recovery"));
@@ -251,7 +257,7 @@ int main()
     // This will act through the global
     model.add_global_action(contact, -99);
 
-    model.init(60, 223); 
+    model.init(100, 223); 
 
     // Running multiple simulations. The results will be stored in the folder
     // "results/", with each replicate named "0000_total_hist.csv"

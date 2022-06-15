@@ -36,12 +36,13 @@ output:
     ## ________________________________________________________________________________
     ## SIMULATION STUDY
     ## 
-    ## Population size    : 10000
-    ## Days (duration)    : 60 (of 60)
-    ## Number of variants : 1
-    ## Last run elapsed t : 0.00s
-    ## Total elapsed t    : 10.00s (100 runs)
-    ## Rewiring           : off
+    ## Population size     : 10000
+    ## Number of entitites : 100
+    ## Days (duration)     : 100 (of 100)
+    ## Number of variants  : 1
+    ## Last run elapsed t  : 0.00s
+    ## Total elapsed t     : 23.00s (100 runs)
+    ## Rewiring            : off
     ## 
     ## Virus(es):
     ##  - Omicron (baseline prevalence: 10 seeds)
@@ -63,21 +64,21 @@ output:
     ##  - Vax Prob. Hospitalization : 0.0100
     ##  - Vax Recovery enhance      : 0.5000
     ## 
-    ## Distribution of the population at time 60:
-    ##  - (0) Susceptible           :  9990 -> 5
+    ## Distribution of the population at time 100:
+    ##  - (0) Susceptible           :  9990 -> 7
     ##  - (1) Exposed               :    10 -> 0
-    ##  - (2) Infected Symptomatic  :     0 -> 1232
-    ##  - (3) Infected Asymptomatic :     0 -> 8
-    ##  - (4) Hospitalized          :     0 -> 95
-    ##  - (5) Recovered             :     0 -> 4730
-    ##  - (6) Removed               :     0 -> 3930
+    ##  - (2) Infected Symptomatic  :     0 -> 839
+    ##  - (3) Infected Asymptomatic :     0 -> 1
+    ##  - (4) Hospitalized          :     0 -> 69
+    ##  - (5) Recovered             :     0 -> 4825
+    ##  - (6) Removed               :     0 -> 4259
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible            0.92  0.08  0.00  0.00  0.00  0.00  0.00
-    ##  - Exposed                0.00  0.71  0.20  0.09  0.00  0.00  0.00
-    ##  - Infected Symptomatic   0.00  0.00  0.96  0.00  0.03  0.00  0.00
-    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.88  0.00  0.12  0.00
-    ##  - Hospitalized           0.00  0.00  0.00  0.00  0.64  0.08  0.28
+    ##  - Susceptible            0.94  0.06  0.00  0.00  0.00  0.00  0.00
+    ##  - Exposed                0.00  0.82  0.13  0.05  0.00  0.00  0.00
+    ##  - Infected Symptomatic   0.00  0.00  0.97  0.00  0.03  0.00  0.00
+    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.89  0.00  0.11  0.00
+    ##  - Hospitalized           0.00  0.00  0.00  0.00  0.66  0.08  0.26
     ##  - Recovered              0.00  0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Removed                0.00  0.00  0.00  0.00  0.00  0.00  1.00
 
