@@ -71,6 +71,9 @@ template<typename TSeq>
 class Tool;
 
 template<typename TSeq>
+class Entity;
+
+template<typename TSeq>
 using VirusPtr = std::shared_ptr< Virus< TSeq > >;
 
 template<typename TSeq>
@@ -104,6 +107,24 @@ template<typename TSeq>
 using ActionFun = std::function<void(Action<TSeq>&,Model<TSeq>*)>;
 
 /**
+ * @brief Decides how to distribute viruses at initialization
+ */
+template<typename TSeq>
+using VirusToAgentFun = std::function<void(Virus<TSeq>&,Model<TSeq>*)>;
+
+/**
+ * @brief Decides how to distribute tools at initialization
+ */
+template<typename TSeq>
+using ToolToAgentFun = std::function<void(Tool<TSeq>&,Model<TSeq>*)>;
+
+/**
+ * @brief Decides how to distribute entities at initialization
+ */
+template<typename TSeq>
+using EntityToAgentFun = std::function<void(Entity<TSeq>&,Model<TSeq>*)>;
+
+/**
  * @brief Action data for update an agent
  * 
  * @tparam TSeq 
@@ -113,9 +134,12 @@ struct Action {
     Agent<TSeq> * agent;
     VirusPtr<TSeq> virus;
     ToolPtr<TSeq> tool;
+    Entity<TSeq> * entity;
     epiworld_fast_int new_status;
     epiworld_fast_int queue;
     ActionFun<TSeq> call;
+    int idx_agent;
+    int idx_object;
 public:
 /**
      * @brief Construct a new Action object
@@ -130,16 +154,22 @@ public:
      * @param new_status_ Next status
      * @param queue_ Efect on the queue
      * @param call_ The action call (if needed)
+     * @param idx_agent_ Location of agent in object.
+     * @param idx_object_ Location of object in agent.
      */
     Action(
         Agent<TSeq> * agent_,
         VirusPtr<TSeq> virus_,
         ToolPtr<TSeq> tool_,
+        Entity<TSeq> * entity_,
         epiworld_fast_int new_status_,
         epiworld_fast_int queue_,
-        ActionFun<TSeq> call_
-    ) : agent(agent_), virus(virus_), tool(tool_), new_status(new_status_),
-        queue(queue_), call(call_) {};
+        ActionFun<TSeq> call_,
+        int idx_agent_,
+        int idx_object_
+    ) : agent(agent_), virus(virus_), tool(tool_), entity(entity_),
+        new_status(new_status_),
+        queue(queue_), call(call_), idx_agent(idx_agent_), idx_object(idx_object_) {};
 };
 
 /**
@@ -2661,6 +2691,10 @@ public:
     /**
      * @brief Computes the reproductive number of each case
      * 
+     * @details By definition, whereas it computes R0 (basic reproductive number)
+     * or Rt/R (the effective reproductive number) will depend on whether the
+     * virus is allowed to circulate naïvely or not, respectively.
+     * 
      * @param fn File where to write out the reproductive number.
      */
     ///@{
@@ -3417,7 +3451,7 @@ inline void DataBase<TSeq>::reproductive_number(
 
     std::ofstream fn_file(fn, std::ios_base::out);
 
-    fn_file << "variant source exposure_id rt\n";
+    fn_file << "variant source source_exposure_date rt\n";
 
     for (auto & m : map)
         fn_file <<
@@ -4496,10 +4530,17 @@ private:
     std::vector< VirusPtr<TSeq> > viruses;
     std::vector< epiworld_double > prevalence_virus; ///< Initial prevalence_virus of each virus
     std::vector< bool > prevalence_virus_as_proportion;
+    std::vector< VirusToAgentFun<TSeq> > viruses_dist_funs;
     
     std::vector< ToolPtr<TSeq> > tools;
     std::vector< epiworld_double > prevalence_tool;
     std::vector< bool > prevalence_tool_as_proportion;
+    std::vector< ToolToAgentFun<TSeq> > tools_dist_funs;
+
+    std::vector< Entity<TSeq> > entities; 
+    std::vector< epiworld_double > prevalence_entity;
+    std::vector< bool > prevalence_entity_as_proportion;
+    std::vector< EntityToAgentFun<TSeq> > entities_dist_funs;
 
     std::shared_ptr< std::mt19937 > engine =
         std::make_shared< std::mt19937 >();
@@ -4507,7 +4548,7 @@ private:
     std::shared_ptr< std::uniform_real_distribution<> > runifd =
         std::make_shared< std::uniform_real_distribution<> >(0.0, 1.0);
 
-std::shared_ptr< std::normal_distribution<> > rnormd =
+    std::shared_ptr< std::normal_distribution<> > rnormd =
         std::make_shared< std::normal_distribution<> >(0.0);
 
     std::shared_ptr< std::gamma_distribution<> > rgammad = 
@@ -4530,6 +4571,7 @@ std::shared_ptr< std::normal_distribution<> > rnormd =
 
     void dist_tools();
     void dist_virus();
+    void dist_entities();
 
     std::chrono::time_point<std::chrono::steady_clock> time_start;
     std::chrono::time_point<std::chrono::steady_clock> time_end;
@@ -4560,17 +4602,25 @@ std::shared_ptr< std::normal_distribution<> > rnormd =
      * @brief Construct a new Action object
      * 
      * @param agent_ Agent over which the action will be called
+     * @param virus_ Virus pointer included in the action
+     * @param tool_ Tool pointer included in the action
+     * @param entity_ Entity pointer included in the action
      * @param new_status_ New state of the agent
      * @param call_ Function the action will call
      * @param queue_ Change in the queue
+     * @param idx_agent_ Location of agent in object.
+     * @param idx_object_ Location of object in agent.
      */
     void actions_add(
         Agent<TSeq> * agent_,
         VirusPtr<TSeq> virus_,
         ToolPtr<TSeq> tool_,
+        Entity<TSeq> * entity_,
         epiworld_fast_uint new_status_,
         epiworld_fast_int queue_,
-        ActionFun<TSeq> call_
+        ActionFun<TSeq> call_,
+        int idx_agent_,
+        int idx_object_
         );
 
     /**
@@ -4665,6 +4715,9 @@ public:
     void add_virus_n(Virus<TSeq> v, unsigned int preval);
     void add_tool(Tool<TSeq> t, epiworld_double preval);
     void add_tool_n(Tool<TSeq> t, unsigned int preval);
+    void add_entity(Entity<TSeq> e, epiworld_double preval);
+    void add_entity_n(Entity<TSeq> e, unsigned int preval);
+    void add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> fun);
     ///@}
 
     /**
@@ -5026,8 +5079,6 @@ inline std::function<void(size_t,Model<TSeq>*)> save_run(
     std::function<void(size_t,Model<TSeq>*)> saver = [fmt,what_to_save](
         size_t niter, Model<TSeq> * m
     ) -> void {
-    //     std::string fn_variant_info,
-
 
         std::string variant_info = "";
         std::string variant_hist = "";
@@ -5111,9 +5162,12 @@ inline void Model<TSeq>::actions_add(
     Agent<TSeq> * agent_,
     VirusPtr<TSeq> virus_,
     ToolPtr<TSeq> tool_,
+    Entity<TSeq> * entity_,
     epiworld_fast_uint new_status_,
     epiworld_fast_int queue_,
-    ActionFun<TSeq> call_
+    ActionFun<TSeq> call_,
+    int idx_agent_,
+    int idx_object_
 ) {
     
     ++nactions;
@@ -5128,19 +5182,25 @@ inline void Model<TSeq>::actions_add(
 
         actions.push_back(
             Action<TSeq>(
-                agent_, virus_, tool_, new_status_, queue_, call_
+                agent_, virus_, tool_, entity_, new_status_, queue_, call_,
+                idx_agent_, idx_object_
             ));
 
     }
     else 
     {
+
         Action<TSeq> & A = actions.at(nactions - 1u);
         A.agent = agent_;
         A.virus = virus_;
         A.tool = tool_;
+        A.entity = entity_;
         A.new_status = new_status_;
         A.queue = queue_;
         A.call = call_;
+        A.idx_agent = idx_agent_;
+        A.idx_object = idx_object_;
+
     }
 
     return;
@@ -5155,7 +5215,7 @@ inline void Model<TSeq>::actions_run()
     {
 
         Action<TSeq>   a = actions[--nactions];
-        Agent<TSeq> * p = a.agent;
+        Agent<TSeq> * p  = a.agent;
 
         // Applying function
         if (a.call)
@@ -5221,6 +5281,13 @@ inline void Model<TSeq>::actions_run()
             }
             
         }
+
+        #ifdef EPI_DEBUG
+        if (p->status >= static_cast<epiworld_fast_int>(nstatus))
+                throw std::range_error(
+                    "The new status " + std::to_string(p->status) + " is out of range. " +
+                    "The model currently has " + std::to_string(nstatus - 1) + " statuses.");
+        #endif
 
         // Updating queue
         if (a.queue > 0)
@@ -5310,8 +5377,16 @@ inline Model<TSeq>::Model(const Model<TSeq> & model) :
     db(model.db),
     viruses(model.viruses),
     prevalence_virus(model.prevalence_virus),
+    prevalence_virus_as_proportion(model.prevalence_virus_as_proportion),
+    viruses_dist_funs(model.viruses_dist_funs),
     tools(model.tools),
     prevalence_tool(model.prevalence_tool),
+    prevalence_tool_as_proportion(model.prevalence_tool_as_proportion),
+    tools_dist_funs(model.tools_dist_funs),
+    entities(model.entities),
+    prevalence_entity(model.prevalence_entity),
+    prevalence_entity_as_proportion(model.prevalence_entity_as_proportion),
+    entities_dist_funs(model.entities_dist_funs),
     engine(model.engine),
     runifd(model.runifd),
     parameters(model.parameters),
@@ -5354,8 +5429,16 @@ inline Model<TSeq>::Model(Model<TSeq> && model) :
     db(std::move(model.db)),
     viruses(std::move(model.viruses)),
     prevalence_virus(std::move(model.prevalence_virus)),
+    prevalence_virus_as_proportion(std::move(model.prevalence_virus_as_proportion)),
+    viruses_dist_funs(std::move(model.viruses_dist_funs)),
     tools(std::move(model.tools)),
     prevalence_tool(std::move(model.prevalence_tool)),
+    prevalence_tool_as_proportion(std::move(model.prevalence_tool_as_proportion)),
+    tools_dist_funs(std::move(model.tools_dist_funs)),
+    entities(std::move(model.entities)),
+    prevalence_entity(std::move(model.prevalence_entity)),
+    prevalence_entity_as_proportion(std::move(model.prevalence_entity_as_proportion)),
+    entities_dist_funs(std::move(model.entities_dist_funs)),
     engine(std::move(model.engine)),
     runifd(std::move(model.runifd)),
     parameters(std::move(model.parameters)),
@@ -5374,17 +5457,6 @@ inline Model<TSeq>::Model(Model<TSeq> && model) :
     queue(std::move(model.queue)),
     use_queuing(model.use_queuing)
 {
-
-    // // Pointing to the right place
-    // db.set_model(*this);
-
-    // // Removing old neighbors
-    // model.clone_population(
-    //     population,
-    //     population_ids,
-    //     directed,
-    //     this
-    //     );
 
 }
 
@@ -5565,7 +5637,6 @@ template<typename TSeq>
 inline void Model<TSeq>::dist_virus()
 {
 
-
     // Starting first infection
     int n = size();
     std::vector< size_t > idx(n);
@@ -5575,6 +5646,13 @@ inline void Model<TSeq>::dist_virus()
 
     for (unsigned int v = 0; v < viruses.size(); ++v)
     {
+
+        if (viruses_dist_funs[v])
+        {
+            viruses_dist_funs[v](*viruses[v], this);
+            continue;
+        }
+
         // Picking how many
         int nsampled;
         if (prevalence_virus_as_proportion[v])
@@ -5612,7 +5690,7 @@ inline void Model<TSeq>::dist_virus()
 
         // Apply the actions
         actions_run();
-    }      
+    }
 
 }
 
@@ -5625,6 +5703,13 @@ inline void Model<TSeq>::dist_tools()
     std::vector< size_t > idx(n);
     for (unsigned int t = 0; t < tools.size(); ++t)
     {
+
+        if (tools_dist_funs[t])
+        {
+            tools_dist_funs[t](*tools[t], this);
+            continue;
+        }
+
         // Picking how many
         int nsampled;
         if (prevalence_tool_as_proportion[t])
@@ -5649,6 +5734,60 @@ inline void Model<TSeq>::dist_tools()
             int loc = static_cast<unsigned int>(floor(runif() * n_left--));
             
             population[idx[loc]].add_tool(tool, tool->status_init, tool->queue_init);
+            
+            nsampled--;
+
+            std::swap(idx[loc], idx[n_left]);
+
+        }
+
+        // Apply the actions
+        actions_run();
+
+    }
+
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::dist_entities()
+{
+
+    // Starting first infection
+    int n = size();
+    std::vector< size_t > idx(n);
+    for (unsigned int e = 0; e < entities.size(); ++e)
+    {
+
+        if (entities_dist_funs[e])
+        {
+            entities_dist_funs[e](entities[e], this);
+            continue;
+        }
+
+        // Picking how many
+        int nsampled;
+        if (prevalence_entity_as_proportion[e])
+        {
+            nsampled = static_cast<int>(std::floor(prevalence_entity[e] * size()));
+        }
+        else
+        {
+            nsampled = static_cast<int>(prevalence_entity[e]);
+        }
+
+        if (nsampled > static_cast<int>(size()))
+            throw std::range_error("There are only " + std::to_string(size()) + 
+            " individuals in the population. Cannot add the entity to " + std::to_string(nsampled));
+        
+        Entity<TSeq> & entity = entities[e];
+
+        int n_left = n;
+        std::iota(idx.begin(), idx.end(), 0);
+        while (nsampled > 0)
+        {
+            int loc = static_cast<unsigned int>(floor(runif() * n_left--));
+            
+            population[idx[loc]].add_entity(entity, entity.status_init, entity.queue_init);
             
             nsampled--;
 
@@ -5776,6 +5915,7 @@ inline void Model<TSeq>::add_virus(Virus<TSeq> v, epiworld_double preval)
     viruses.push_back(std::make_shared< Virus<TSeq> >(v));
     prevalence_virus.push_back(preval);
     prevalence_virus_as_proportion.push_back(true);
+    viruses_dist_funs.push_back(nullptr);
 
 }
 
@@ -5803,6 +5943,7 @@ inline void Model<TSeq>::add_virus_n(Virus<TSeq> v, unsigned int preval)
     viruses.push_back(std::make_shared< Virus<TSeq> >(v));
     prevalence_virus.push_back(preval);
     prevalence_virus_as_proportion.push_back(false);
+    viruses_dist_funs.push_back(nullptr);
 
 }
 
@@ -5820,6 +5961,7 @@ inline void Model<TSeq>::add_tool(Tool<TSeq> t, epiworld_double preval)
     tools.push_back(std::make_shared< Tool<TSeq> >(t));
     prevalence_tool.push_back(preval);
     prevalence_tool_as_proportion.push_back(true);
+    tools_dist_funs.push_back(nullptr);
 
 }
 
@@ -5830,6 +5972,52 @@ inline void Model<TSeq>::add_tool_n(Tool<TSeq> t, unsigned int preval)
     tools.push_back(std::make_shared<Tool<TSeq> >(t));
     prevalence_tool.push_back(preval);
     prevalence_tool_as_proportion.push_back(false);
+    tools_dist_funs.push_back(nullptr);
+}
+
+
+template<typename TSeq>
+inline void Model<TSeq>::add_entity(Entity<TSeq> e, epiworld_double preval)
+{
+
+    if (preval > 1.0)
+        throw std::range_error("Prevalence of entity cannot be above 1.0");
+
+    if (preval < 0.0)
+        throw std::range_error("Prevalence of entity cannot be negative");
+
+    e.model = this;
+    e.id = entities.size();
+    entities.push_back(e);
+    prevalence_entity.push_back(preval);
+    prevalence_entity_as_proportion.push_back(false);
+    entities_dist_funs.push_back(nullptr);
+
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::add_entity_n(Entity<TSeq> e, unsigned int preval)
+{
+
+    e.model = this;
+    e.id = entities.size();
+    entities.push_back(e);
+    prevalence_entity.push_back(preval);
+    prevalence_entity_as_proportion.push_back(false);
+    entities_dist_funs.push_back(nullptr);
+
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> fun)
+{
+
+    e.id = entities.size();
+    entities.push_back(e);
+    prevalence_entity.push_back(0.0);
+    prevalence_entity_as_proportion.push_back(false);
+    entities_dist_funs.push_back(fun);
+
 }
 
 template<typename TSeq>
@@ -6234,6 +6422,7 @@ inline void Model<TSeq>::reset() {
         queue.set_model(this);
 
     // Re distributing tools and virus
+    dist_entities();
     dist_virus();
     dist_tools();
 
@@ -7076,9 +7265,7 @@ class Virus {
     friend class Model<TSeq>;
     friend class DataBase<TSeq>;
     friend void default_add_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
-    friend void default_add_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_rm_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
-    friend void default_rm_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
 private:
     
     Agent<TSeq> * agent       = nullptr;
@@ -7864,9 +8051,7 @@ template<typename TSeq = int>
 class Tool {
     friend class Agent<TSeq>;
     friend class Model<TSeq>;
-    friend void default_add_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_add_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
-    friend void default_rm_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_rm_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
 private:
 
@@ -8355,13 +8540,23 @@ template<typename TSeq>
 class AgentsSample;
 
 template<typename TSeq>
+inline void default_add_entity(Action<TSeq> & a, Model<TSeq> * m);
+
+template<typename TSeq>
+inline void default_rm_entity(Action<TSeq> & a, Model<TSeq> * m);
+
+template<typename TSeq>
 class Entity {
     friend class Agent<TSeq>;
     friend class AgentsSample<TSeq>;
     friend class Model<TSeq>;
+    friend void default_add_entity<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
+    friend void default_rm_entity<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
 private:
     
-    std::vector< Agent<TSeq> * > agents;
+    int id = -1;
+    std::vector< Agent<TSeq> * > agents;   ///< Vector of agents
+    std::vector< size_t > agents_location; ///< Location where the entity is stored in the agent
     size_t n_agents = 0u;
 
     /**
@@ -8385,9 +8580,18 @@ private:
     std::vector< epiworld_double > location = {0.0}; ///< An arbitrary vector for location
     Model<TSeq> * model = nullptr;
 
+    epiworld_fast_int status_init = -99;
+    epiworld_fast_int status_post = -99;
+
+    epiworld_fast_int queue_init = 0; ///< Change of status when added to agent.
+    epiworld_fast_int queue_post = 0; ///< Change of status when removed from agent.
+
 public:
 
-    Entity() {};
+    Entity() = delete;
+    // Entity(const Entity & e) = delete;
+    // Entity(Entity && e);
+    Entity(std::string name) : entity_name(name) {};
 
     void add_agent(Agent<TSeq> & p);
     void add_agent(Agent<TSeq> * p);
@@ -8402,24 +8606,29 @@ public:
     typename std::vector< Agent<TSeq> * >::const_iterator begin() const;
     typename std::vector< Agent<TSeq> * >::const_iterator end() const;
 
+    int get_id() const noexcept;
+    const std::string & get_name() const noexcept;
+
+    void set_status(epiworld_fast_int init, epiworld_fast_int post);
+    void set_queue(epiworld_fast_int init, epiworld_fast_int post);
+    void get_status(epiworld_fast_int * init, epiworld_fast_int * post);
+    void get_queue(epiworld_fast_int * init, epiworld_fast_int * post);
+
 };
 
 template<typename TSeq>
 inline void Entity<TSeq>::add_agent(Agent<TSeq> & p)
 {
-    if (++n_agents <= agents.size())
-        agents.push_back(&p);
-    else
-        agents[n_agents - 1] = &p;
+
+    // Need to add it to the actions, through the individual
+    p.add_entity(*this);    
+
 }
 
 template<typename TSeq>
 inline void Entity<TSeq>::add_agent(Agent<TSeq> * p)
 {
-    if (++n_agents <= agents.size())
-        agents.push_back(p);
-    else
-        agents[n_agents - 1] = p;
+    p->add_entity(*this);
 }
 
 template<typename TSeq>
@@ -8489,6 +8698,65 @@ inline typename std::vector< Agent<TSeq> * >::const_iterator Entity<TSeq>::end()
     return agents.begin() + n_agents;
 }
 
+template<typename TSeq>
+inline int Entity<TSeq>::get_id() const noexcept
+{
+    return id;
+}
+
+template<typename TSeq>
+inline const std::string & Entity<TSeq>::get_name() const noexcept
+{
+    return entity_name;
+}
+
+template<typename TSeq>
+inline void Entity<TSeq>::set_status(
+    epiworld_fast_int init,
+    epiworld_fast_int end
+)
+{
+    status_init = init;
+    status_post = end;
+}
+
+template<typename TSeq>
+inline void Entity<TSeq>::set_queue(
+    epiworld_fast_int init,
+    epiworld_fast_int end
+)
+{
+    queue_init = init;
+    queue_post = end;
+}
+
+template<typename TSeq>
+inline void Entity<TSeq>::get_status(
+    epiworld_fast_int * init,
+    epiworld_fast_int * post
+)
+{
+    if (init != nullptr)
+        *init = status_init;
+
+    if (post != nullptr)
+        *post = status_post;
+
+}
+
+template<typename TSeq>
+inline void Entity<TSeq>::get_queue(
+    epiworld_fast_int * init,
+    epiworld_fast_int * post
+)
+{
+    if (init != nullptr)
+        *init = queue_init;
+
+    if (post != nullptr)
+        *post = queue_post;
+
+}
 
 #endif
 /*//////////////////////////////////////////////////////////////////////////////
@@ -8711,10 +8979,16 @@ template<typename TSeq>
 inline void default_add_tool(Action<TSeq> & a, Model<TSeq> * m);
 
 template<typename TSeq>
+inline void default_add_entity(Action<TSeq> & a, Model<TSeq> * m);
+
+template<typename TSeq>
 inline void default_rm_virus(Action<TSeq> & a, Model<TSeq> * m);
 
 template<typename TSeq>
 inline void default_rm_tool(Action<TSeq> & a, Model<TSeq> * m);
+
+template<typename TSeq>
+inline void default_rm_entity(Action<TSeq> & a, Model<TSeq> * m);
 
 /**
  * @brief Agent (agents)
@@ -8732,13 +9006,17 @@ class Agent {
     friend class Queue<TSeq>;
     friend void default_add_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_add_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
+    friend void default_add_entity<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_rm_virus<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
     friend void default_rm_tool<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
+    friend void default_rm_entity<TSeq>(Action<TSeq> & a, Model<TSeq> * m);
 private:
     Model<TSeq> * model;
     
     std::vector< Agent<TSeq> * > neighbors;
     std::vector< Entity<TSeq> * > entities;
+    std::vector< size_t > entities_locations;
+    epiworld_fast_uint n_entities = 0u;
 
     epiworld_fast_uint status = 0u;
     epiworld_fast_uint status_prev = 0u; ///< For accounting, if need to undo a change.
@@ -8756,10 +9034,14 @@ private:
     std::vector< ToolPtr<TSeq> > tools;
     epiworld_fast_uint n_tools = 0u;
 
-    ActionFun<TSeq> add_virus_ = default_add_virus<TSeq>;
-    ActionFun<TSeq> add_tool_  = default_add_tool<TSeq>;
+    ActionFun<TSeq> add_virus_  = default_add_virus<TSeq>;
+    ActionFun<TSeq> add_tool_   = default_add_tool<TSeq>;
+    ActionFun<TSeq> add_entity_ = default_add_entity<TSeq>;
+
     ActionFun<TSeq> rm_virus_  = default_rm_virus<TSeq>;
     ActionFun<TSeq> rm_tool_   = default_rm_tool<TSeq>;
+    ActionFun<TSeq> rm_entity_ = default_rm_entity<TSeq>;
+    
 
     epiworld_fast_uint action_counter = 0u;
 
@@ -8803,6 +9085,12 @@ public:
         epiworld_fast_int queue = -99
         );
 
+    void add_entity(
+        Entity<TSeq> & entity,
+        epiworld_fast_int status_new = -99,
+        epiworld_fast_int queue = -99
+        );
+
     void rm_tool(
         epiworld_fast_uint tool_idx,
         epiworld_fast_int status_new = -99,
@@ -8823,6 +9111,18 @@ public:
 
     void rm_virus(
         VirusPtr<TSeq> & virus,
+        epiworld_fast_int status_new = -99,
+        epiworld_fast_int queue = -99
+    );
+
+    void rm_entity(
+        epiworld_fast_uint entity_idx,
+        epiworld_fast_int status_new = -99,
+        epiworld_fast_int queue = -99
+    );
+
+    void rm_entity(
+        Entity<TSeq> & entity,
         epiworld_fast_int status_new = -99,
         epiworld_fast_int queue = -99
     );
@@ -8913,6 +9213,8 @@ public:
     double & operator[](size_t j);
     ///@}
 
+    const std::vector< Entity<TSeq> * > get_entities();
+
 };
 
 
@@ -8988,7 +9290,11 @@ inline void default_add_virus(Action<TSeq> & a, Model<TSeq> * m)
     p->viruses[n_viruses]->set_date(m->today());
     p->viruses[n_viruses]->agent_exposure_number = ++p->n_exposures;
 
+    #ifdef EPI_DEBUG
+    m->get_db().today_variant.at(v->get_id()).at(p->status)++;
+    #else
     m->get_db().today_variant[v->get_id()][p->status]++;
+    #endif
 
 }
 
@@ -9058,6 +9364,102 @@ inline void default_rm_tool(Action<TSeq> & a, Model<TSeq> * m)
     {
         p->tools[p->n_tools]->agent_idx = t->agent_idx;
         std::swap(t, p->tools[p->n_tools - 1]);
+    }
+
+    return;
+
+}
+
+template<typename TSeq>
+inline void default_add_entity(Action<TSeq> & a, Model<TSeq> * m)
+{
+
+    Agent<TSeq> * p  = a.agent;
+    Entity<TSeq> * e = a.entity;
+
+    CHECK_COALESCE_(a.new_status, e->status_post, p->get_status())
+    CHECK_COALESCE_(a.queue, e->queue_post, 0)
+
+    // Adding the entity to the agent
+    if (++p->n_entities <= p->entities.size())
+    {
+
+        p->entities[p->n_entities - 1]           = e;
+        p->entities_locations[p->n_entities - 1] = e->n_agents;
+
+    } else
+    {
+        p->entities.push_back(e);
+        p->entities_locations.push_back(e->n_agents);
+    }
+
+    // Adding the agent to the entity
+    // Adding the entity to the agent
+    if (++e->n_agents <= e->agents.size())
+    {
+
+        e->agents[e->n_agents - 1]          = p;
+        // Adjusted by '-1' since the list of entities in the agent just grew.
+        e->agents_location[e->n_agents - 1] = p->n_entities - 1;
+
+    } else
+    {
+        e->agents.push_back(p);
+        e->agents_location.push_back(p->n_entities - 1);
+    }
+    
+}
+
+template<typename TSeq>
+inline void default_rm_entity(Action<TSeq> & a, Model<TSeq> * m)
+{
+    
+    Agent<TSeq> *  p = a.agent;    
+    Entity<TSeq> * e = a.entity;
+    size_t idx_agent_in_entity = a.idx_agent;
+    size_t idx_entity_in_agent = a.idx_object;
+
+    CHECK_COALESCE_(a.new_status, e->status_post, p->get_status())
+    CHECK_COALESCE_(a.queue, e->queue_post, 0)
+
+    if (--p->n_entities > 0)
+    {
+
+        // When we move the end entity to the new location, the 
+        // moved entity needs to reflect the change, i.e., where the
+        // entity will now be located in the agent
+        size_t agent_in_end_entity  = p->entities_locations[p->n_entities];
+        Entity<TSeq> * moved_entity = p->entities[p->n_entities];
+
+        // The end entity will be located where the removed was
+        moved_entity->agents_location[agent_in_end_entity] = idx_entity_in_agent;
+
+        // We now make the swap
+        std::swap(
+            p->entities[p->n_entities],
+            p->entities[idx_entity_in_agent]
+        );
+
+    }
+
+    if (--e->n_agents > 0)
+    {
+
+        // When we move the end entity to the new location, the 
+        // moved entity needs to reflect the change, i.e., where the
+        // entity will now be located in the agent
+        size_t entity_in_end_agent = e->agents_location[e->n_agents];
+        Agent<TSeq> * moved_agent  = e->agents[e->n_agents];
+
+        // The end entity will be located where the removed was
+        moved_agent->entities_locations[entity_in_end_agent] = idx_agent_in_entity;
+
+        // We now make the swap
+        std::swap(
+            e->agents[e->n_agents],
+            e->agents[idx_agent_in_entity]
+        );
+
     }
 
     return;
@@ -9135,7 +9537,7 @@ inline void Agent<TSeq>::add_tool(
     
 
     model->actions_add(
-        this, nullptr, tool, status_new, queue, add_tool_
+        this, nullptr, tool, nullptr, status_new, queue, add_tool_, -1, -1
         );
 
 }
@@ -9166,7 +9568,7 @@ inline void Agent<TSeq>::add_virus(
             " included in the model.");
 
     model->actions_add(
-        this, virus, nullptr, status_new, queue, add_virus_
+        this, virus, nullptr, nullptr, status_new, queue, add_virus_, -1, -1
         );
 
 }
@@ -9180,6 +9582,20 @@ inline void Agent<TSeq>::add_virus(
 {
     VirusPtr<TSeq> virus_ptr = std::make_shared< Virus<TSeq> >(virus);
     add_virus(virus_ptr, status_new, queue);
+}
+
+template<typename TSeq>
+inline void Agent<TSeq>::add_entity(
+    Entity<TSeq> & entity,
+    epiworld_fast_int status_new,
+    epiworld_fast_int queue
+)
+{
+
+    model->actions_add(
+        this, nullptr, nullptr, &entity, status_new, queue, add_entity_, -1, -1
+    );
+
 }
 
 template<typename TSeq>
@@ -9197,7 +9613,7 @@ inline void Agent<TSeq>::rm_tool(
         );
 
     model->actions_add(
-        this, nullptr, tools[tool_idx] , status_new, queue, rm_tool_
+        this, nullptr, tools[tool_idx], nullptr, status_new, queue, rm_tool_, -1, -1
         );
 
 }
@@ -9214,7 +9630,7 @@ inline void Agent<TSeq>::rm_tool(
         throw std::logic_error("Cannot remove a virus from another agent!");
 
     model->actions_add(
-        this, tool, nullptr , status_new, queue, rm_tool_
+        this, nullptr, tool, nullptr, status_new, queue, rm_tool_, -1, -1
         );
 
 }
@@ -9238,7 +9654,8 @@ inline void Agent<TSeq>::rm_virus(
 
 
     model->actions_add(
-        this, viruses[virus_idx], nullptr, status_new, queue, default_rm_virus<TSeq>
+        this, viruses[virus_idx], nullptr, nullptr, status_new, queue,
+        default_rm_virus<TSeq>, -1, -1
         );
     
 }
@@ -9255,10 +9672,64 @@ inline void Agent<TSeq>::rm_virus(
         throw std::logic_error("Cannot remove a virus from another agent!");
 
     model->actions_add(
-        this, virus, nullptr, status_new, queue, default_rm_virus<TSeq>
+        this, virus, nullptr, nullptr, status_new, queue,
+        default_rm_virus<TSeq>, -1, -1
         );
 
 
+}
+
+template<typename TSeq>
+inline void Agent<TSeq>::rm_entity(
+    epiworld_fast_uint entity_idx,
+    epiworld_fast_int status_new,
+    epiworld_fast_int queue
+)
+{
+
+    if (entity_idx >= n_entities)
+        throw std::range_error(
+            "The Entity you want to remove is out of range. This Agent only has " +
+            std::to_string(n_entities) + " entitites."
+        );
+    else if (n_entities == 0u)
+        throw std::logic_error(
+            "There is entity to remove here!"
+        );
+
+    model->actions_add(
+        this, nullptr, nullptr, entities[entity_idx], status_new, queue, 
+        default_rm_entity, entities_locations[entity_idx], entity_idx
+    );
+}
+
+template<typename TSeq>
+inline void Agent<TSeq>::rm_entity(
+    Entity<TSeq> & entity,
+    epiworld_fast_int status_new,
+    epiworld_fast_int queue
+)
+{
+
+    // Looking for entity location in the agent
+    int entity_idx = -1;
+    for (size_t i = 0u; i < n_entities; ++i)
+    {
+        if (entities[i]->get_id() == entity->get_id())
+            entity_idx = i;
+    }
+
+    if (entity_idx == -1)
+        throw std::logic_error(
+            "The agent " + std::to_string(id) + " is not associated with entity \"" +
+            entity.get_name() + "\"."
+            );
+
+
+    model->actions_add(
+        this, nullptr, nullptr, entities[entity_idx], status_new, queue, 
+        default_rm_entity, entities_locations[entity_idx], entity_idx
+    );
 }
 
 template<typename TSeq>
@@ -9488,7 +9959,7 @@ inline void Agent<TSeq>::change_status(
 {
 
     model->actions_add(
-        this, nullptr, nullptr, new_status, queue, nullptr
+        this, nullptr, nullptr, nullptr, new_status, queue, nullptr, -1, -1
     );
     
     return;

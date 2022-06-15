@@ -1,4 +1,4 @@
-// #define EPI_DEBUG
+#define EPI_DEBUG
 #include "../../epiworld.hpp"
 
 enum Status {
@@ -137,7 +137,7 @@ EPI_NEW_TOOL(vax_death, int)
 int main()
 {
 
-    int nreplicates = 1000;
+    int nreplicates = 100;
 
     // Baseline Configuration
     Model<> model;
@@ -188,6 +188,14 @@ int main()
     
     model.add_tool(vax, .6);
 
+    // Adding 200 randomly distributed entities, each one with
+    // 100 individuals
+    for (size_t r = 0u; r < 200; ++r)
+    {
+        Entity<int> e(std::string("Location ") + std::to_string(r));
+        model.add_entity_n(e, 100);
+    }
+
     model.init(60, 223); 
 
     // Running multiple simulations. The results will be stored in the folder
@@ -200,9 +208,9 @@ int main()
             false,
             false,
             false,
-            false,
+            true,  // Transmissions
             true,  // Transitions
-            true
+            true   // Reproductive numbers
             )
         );
 

@@ -59,7 +59,7 @@ ggplot(summ, aes(x = date, colour = status)) +
         ) 
 ```
 
-Distribution of the reproductive number
+Distribution of the mean reproductive number
 
 ```{r rep-num, dev="svg", echo = FALSE}
 repnum <- lapply(
@@ -72,4 +72,43 @@ ggplot(repnum, aes(x = rt)) +
     geom_histogram() + 
     labs(x = "Reproductive Number", y = "Count",
     title = "Distribution of Reproductive number after 1,000 replicates")
+```
+
+Distribution of the Rt
+
+```{r rt-num, dev="svg", echo = FALSE}
+transm <- lapply(
+    list.files("results", pattern = "transm", full.names = TRUE), fread
+)
+
+transm <- lapply(transm, \(x) {
+    x[, .(rt = .N), by = .(variant, source_exposure_date, source)]
+})
+
+transm <- lapply(transm, \(x) {
+    x[, .(rt = mean(rt)), by = .(variant, source_exposure_date)]
+}) 
+
+transm <- Map(\(d, i) d[, r := i], d = transm, i = seq_along(transm) - 1) |>
+    rbindlist()
+
+setnames(transm, "source_exposure_date", "date")
+
+summ_transm <- transm[, .(
+    `2.5%`  = quantile(rt, probs = .025),
+    Mean    = mean(rt),
+    `97.5%` = quantile(rt, prob = .975)
+    ), by = .(date)][date %inrange% c(1, 100)]
+
+setorder(summ_transm, status, date)
+
+ggplot(summ_transm, aes(x = date)) +
+    geom_ribbon(aes(
+        y = Mean, ymin = `2.5%`, ymax = `97.5%`
+        ), alpha = .3) +
+    geom_line(aes(y = Mean)) +
+    labs(
+        x = "Day", y = "Rt",
+        title = "Distribution of Rt after 1,000 replicates"
+        )
 ```
