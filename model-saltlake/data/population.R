@@ -94,8 +94,15 @@ saveRDS(
   file = "model-saltlake/data/population.rds"
 )
 
+# fwrite(
+#   unique(rbind(households, visits)),
+#   file = "model-saltlake/data/population.txt",
+#   sep = " ", col.names = FALSE
+# )
+
 fwrite(
-  unique(rbind(households, visits)),
+  unique(rbind(households)), # Will be connected through entities
   file = "model-saltlake/data/population.txt",
   sep = " ", col.names = FALSE
 )
+

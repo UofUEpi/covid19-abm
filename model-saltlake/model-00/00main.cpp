@@ -1,4 +1,4 @@
-#define EPI_DEBUG
+// #define EPI_DEBUG
 #include "../../epiworld.hpp"
 
 enum Status {
@@ -134,6 +134,58 @@ EPI_NEW_TOOL(vax_death, int)
             std::pow(1/days, m->par("Vax Efficacy decay"));
 }
 
+EPI_NEW_GLOBALFUN(contact, int)
+{
+    for (auto & a : *(m->get_agents()))
+    {
+        // Will it get it from the entities?
+        if (a.get_status() == Status::Susceptible)
+        {
+
+            AgentsSample<int> neighbors(a, 5, true);
+            size_t nvariants_tmp = 0u;
+            for (auto & neighbor: neighbors) 
+            {
+                        
+                for (const VirusPtr<int> & v : neighbor->get_viruses()) 
+                { 
+
+                    #ifdef EPI_DEBUG
+                    if (nvariants_tmp >= m->array_virus_tmp.size())
+                        throw std::logic_error("Trying to add an extra element to a temporal array outside of the range.");
+                        // printf_epiworld("N used %d\n", v.use_count());
+                    #endif
+                        
+                    /* And it is a function of susceptibility_reduction as well */ 
+                    m->array_double_tmp[nvariants_tmp] =
+                        (1.0 - a.get_susceptibility_reduction(v)) * 
+                        v->get_prob_infecting() * 
+                        (1.0 - neighbor->get_transmission_reduction(v)) 
+                        ; 
+                
+                    m->array_virus_tmp[nvariants_tmp++] = &(*v);
+                    
+                } 
+            }
+
+            // No virus to compute
+            if (nvariants_tmp == 0u)
+                continue;
+
+            // Running the roulette
+            int which = roulette(nvariants_tmp, m);
+
+            if (which < 0)
+                continue;
+
+            a.add_virus(*(m->array_virus_tmp[which])); 
+
+        }
+
+
+    }
+}
+
 int main()
 {
 
@@ -154,9 +206,9 @@ int main()
     model.write_edgelist("../data/population-model-written.txt");
 
     // Setting up the parameters
-    model.add_param(.9, "Prob. Infecting");
+    model.add_param(.5, "Prob. Infecting");
     model.add_param(.7, "Prob. Dev. Symptoms");
-    model.add_param(1.0/7.0, "Prob. Recovery");
+    model.add_param(1.0/10.0, "Prob. Recovery");
     model.add_param(.05, "Prob. Hospitalization");
     model.add_param(.30, "Prob. death");
     model.add_param(.8, "Mask redux transmission");
@@ -173,7 +225,7 @@ int main()
     omicron.set_prob_infecting(&model("Prob. Infecting"));
     omicron.set_prob_recovery(&model("Prob. Recovery"));
     omicron.set_prob_death(&model("Prob. death"));
-    model.add_virus(omicron, .05);
+    model.add_virus_n(omicron, 10);
 
     // Designing Mask wearing
     Tool<> mask("Mask");
@@ -186,15 +238,18 @@ int main()
     vax.set_recovery_enhancer_fun(vax_recovery);
     vax.set_death_reduction_fun(vax_death);
     
-    model.add_tool(vax, .6);
+    model.add_tool(vax, .3);
 
     // Adding 200 randomly distributed entities, each one with
     // 100 individuals
-    for (size_t r = 0u; r < 200; ++r)
+    for (size_t r = 0u; r < 100; ++r)
     {
         Entity<int> e(std::string("Location ") + std::to_string(r));
-        model.add_entity_n(e, 100);
+        model.add_entity_n(e, 500);
     }
+
+    // This will act through the global
+    model.add_global_action(contact, -99);
 
     model.init(60, 223); 
 

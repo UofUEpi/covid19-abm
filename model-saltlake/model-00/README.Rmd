@@ -77,11 +77,11 @@ ggplot(repnum, aes(x = rt)) +
 Distribution of the Rt
 
 ```{r rt-num, dev="svg", echo = FALSE}
-transm <- lapply(
+net <- lapply(
     list.files("results", pattern = "transm", full.names = TRUE), fread
 )
 
-transm <- lapply(transm, \(x) {
+transm <- lapply(net, \(x) {
     x[, .(rt = .N), by = .(variant, source_exposure_date, source)]
 })
 
@@ -100,7 +100,7 @@ summ_transm <- transm[, .(
     `97.5%` = quantile(rt, prob = .975)
     ), by = .(date)][date %inrange% c(1, 100)]
 
-setorder(summ_transm, status, date)
+setorder(summ_transm, date)
 
 ggplot(summ_transm, aes(x = date)) +
     geom_ribbon(aes(
@@ -111,4 +111,38 @@ ggplot(summ_transm, aes(x = date)) +
         x = "Day", y = "Rt",
         title = "Distribution of Rt after 1,000 replicates"
         )
+```
+
+Connection network
+
+```{r net, cache = TRUE, echo = FALSE}
+library(igraph)
+library(netplot)
+
+# First four days
+el <- net[[1]][date <= 3]
+
+vert <- rbind(
+    el[, .(date, id = target + 1)],
+    el[, .(date = source_exposure_date, id = source + 1)]
+)
+vert <- vert[, .(date = min(date)), by = "id"]
+
+el[, date := NULL]
+setnames(el, "source_exposure_date", "date")
+el[, variant:=NULL]
+
+el <- graph_from_data_frame(
+    el[, .(source, target)] + 1,
+    vertices = as.data.frame(vert)
+    )
+
+nplot(
+    el,
+    skip.vertex       = TRUE,
+    sample.edges      = .5,
+    vertex.label.show = 0,
+    edge.line.breaks  = 5,
+    vertex.color      = viridisLite::inferno(4)[V(el)$date + 1]
+    )
 ```
