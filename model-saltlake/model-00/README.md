@@ -41,7 +41,7 @@ output:
     ## Days (duration)     : 100 (of 100)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 23.00s (100 runs)
+    ## Total elapsed t     : 28.00s (100 runs)
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -65,20 +65,20 @@ output:
     ##  - Vax Recovery enhance      : 0.5000
     ## 
     ## Distribution of the population at time 100:
-    ##  - (0) Susceptible           :  9990 -> 7
+    ##  - (0) Susceptible           :  9990 -> 4
     ##  - (1) Exposed               :    10 -> 0
-    ##  - (2) Infected Symptomatic  :     0 -> 839
-    ##  - (3) Infected Asymptomatic :     0 -> 1
-    ##  - (4) Hospitalized          :     0 -> 69
-    ##  - (5) Recovered             :     0 -> 4825
-    ##  - (6) Removed               :     0 -> 4259
+    ##  - (2) Infected Symptomatic  :     0 -> 864
+    ##  - (3) Infected Asymptomatic :     0 -> 0
+    ##  - (4) Hospitalized          :     0 -> 49
+    ##  - (5) Recovered             :     0 -> 4775
+    ##  - (6) Removed               :     0 -> 4308
     ## 
     ## Transition Probabilities:
     ##  - Susceptible            0.94  0.06  0.00  0.00  0.00  0.00  0.00
-    ##  - Exposed                0.00  0.82  0.13  0.05  0.00  0.00  0.00
+    ##  - Exposed                0.00  0.82  0.12  0.06  0.00  0.00  0.00
     ##  - Infected Symptomatic   0.00  0.00  0.97  0.00  0.03  0.00  0.00
-    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.89  0.00  0.11  0.00
-    ##  - Hospitalized           0.00  0.00  0.00  0.00  0.66  0.08  0.26
+    ##  - Infected Asymptomatic  0.00  0.00  0.00  0.88  0.00  0.12  0.00
+    ##  - Hospitalized           0.00  0.00  0.00  0.00  0.66  0.08  0.27
     ##  - Recovered              0.00  0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Removed                0.00  0.00  0.00  0.00  0.00  0.00  1.00
 

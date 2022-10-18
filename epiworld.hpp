@@ -11,6 +11,7 @@
 #include <climits>
 #include <cstdint>
 #include <algorithm>
+#include <regex>
 
 #ifndef EPIWORLD_HPP
 #define EPIWORLD_HPP
@@ -46,31 +47,33 @@ namespace epiworld {
 #endif
 
 #ifndef epiworld_fast_int
-    #define epiworld_fast_int std::int_fast16_t
+    #define epiworld_fast_int long long int
 #endif
 
 #ifndef epiworld_fast_uint
-    #define epiworld_fast_uint std::uint_fast16_t
+    #define epiworld_fast_uint unsigned long long int
 #endif
 
 #endif
 
-template<typename TSeq>
+#define EPI_DEFAULT_TSEQ int
+
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class Model;
 
-template<typename TSeq>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class Agent;
 
-template<typename TSeq>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class PersonTools;
 
-template<typename TSeq>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class Virus;
 
-template<typename TSeq>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class Tool;
 
-template<typename TSeq>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 class Entity;
 
 template<typename TSeq>
@@ -275,6 +278,7 @@ public:
 #define EPIWORLD_MACROS_HPP
 
 
+
 /**
  * @brief Helper macro to define a new tool
  * 
@@ -353,7 +357,7 @@ public:
     { \
         printf_epiworld("Running the model...\n");\
     } \
-    for (unsigned int niter = 0; niter < a.get_ndays(); ++niter)
+    for (epiworld_fast_uint niter = 0; niter < a.get_ndays(); ++niter)
 
 #define EPI_TOKENPASTE(a,b) a ## b
 #define MPAR(num) *(m->EPI_TOKENPASTE(p,num))
@@ -368,9 +372,17 @@ public:
 #define EPI_NEW_GLOBALFUN(funname,tseq) inline void \
     (funname)(epiworld::Model<tseq>* m)
 
-#define EPI_NEW_GLOBALFUN_LAMBDA(funname,tseq) inline void \
+#define EPI_NEW_GLOBALFUN_LAMBDA(funname,tseq) \
     epiworld::GlobalFun<tseq> funname = \
     [](epiworld::Model<tseq>* m) -> void
+
+class QueueValues {
+public:
+    static const int NoOne    = 0;
+    static const int OnlySelf = 1;
+    static const int Everyone = 2;
+};
+
 
 #endif
 /*//////////////////////////////////////////////////////////////////////////////
@@ -417,7 +429,7 @@ struct vecHasher {
         // 0x9e3779b9 is a 32 bit constant (comes from the golden ratio)
         // << is a shift operator, something like lhs * 2^(rhs)
         if (dat.size() > 1u)
-            for (unsigned int i = 1u; i < dat.size(); ++i)
+            for (epiworld_fast_uint i = 1u; i < dat.size(); ++i)
                 hash ^= hasher(dat[i]) + 0x9e3779b9 + (hash<<6) + (hash>>2);
         
         return hash;
@@ -425,7 +437,7 @@ struct vecHasher {
     }
 };
 
-template<typename Ta = epiworld_double, typename Tb = unsigned int> 
+template<typename Ta = epiworld_double, typename Tb = epiworld_fast_uint> 
 using MapVec_type = std::unordered_map< std::vector< Ta >, Tb, vecHasher<Ta>>;
 
 /**
@@ -443,7 +455,10 @@ using MapVec_type = std::unordered_map< std::vector< Ta >, Tb, vecHasher<Ta>>;
 template<typename TSeq = int>
 inline TSeq default_sequence();
 
-int _n_sequences_created = 0;
+// Making it 'static' so that we don't have problems when including the
+// header. This is important during the linkage, e.g., in R.
+// See https://en.cppreference.com/w/cpp/language/storage_duration#Linkage
+static int _n_sequences_created = 0;
 
 template<>
 inline bool default_sequence() {
@@ -525,7 +540,9 @@ inline int roulette(
     // Step 1: Computing the prob on none 
     epiworld_double p_none = 1.0;
     std::vector< int > certain_infection;
-    for (unsigned int p = 0u; p < probs.size(); ++p)
+    certain_infection.reserve(probs.size());
+
+    for (epiworld_fast_uint p = 0u; p < probs.size(); ++p)
     {
         p_none *= (1.0 - probs[p]);
 
@@ -541,11 +558,11 @@ inline int roulette(
         return certain_infection[std::floor(r * certain_infection.size())];
 
     // Step 2: Calculating the prob of none or single
-    std::vector< epiworld_double > probs_only_p;
+    std::vector< epiworld_double > probs_only_p(probs.size());
     epiworld_double p_none_or_single = p_none;
-    for (unsigned int p = 0u; p < probs.size(); ++p)
+    for (epiworld_fast_uint p = 0u; p < probs.size(); ++p)
     {
-        probs_only_p.push_back(probs[p] * (p_none / (1.0 - probs[p])));
+        probs_only_p[p] = probs[p] * (p_none / (1.0 - probs[p]));
         p_none_or_single += probs_only_p[p];
     }
 
@@ -554,7 +571,7 @@ inline int roulette(
     if (r < cumsum)
         return -1;
 
-    for (unsigned int p = 0u; p < probs.size(); ++p)
+    for (epiworld_fast_uint p = 0u; p < probs.size(); ++p)
     {
         // If it yield here, then bingo, the individual will acquire the disease
         cumsum += probs_only_p[p]/(p_none_or_single);
@@ -569,7 +586,7 @@ inline int roulette(
 
 template<typename TSeq>
 inline int roulette(
-    unsigned int nelements,
+    epiworld_fast_uint nelements,
     Model<TSeq> * m
     )
 {
@@ -581,9 +598,9 @@ inline int roulette(
 
     // Step 1: Computing the prob on none 
     epiworld_double p_none = 1.0;
-    unsigned int ncertain = 0u;
+    epiworld_fast_uint ncertain = 0u;
     // std::vector< int > certain_infection;
-    for (unsigned int p = 0u; p < nelements; ++p)
+    for (epiworld_fast_uint p = 0u; p < nelements; ++p)
     {
         p_none *= (1.0 - m->array_double_tmp[p]);
 
@@ -602,7 +619,7 @@ inline int roulette(
     // Step 2: Calculating the prob of none or single
     // std::vector< epiworld_double > probs_only_p;
     epiworld_double p_none_or_single = p_none;
-    for (unsigned int p = 0u; p < nelements; ++p)
+    for (epiworld_fast_uint p = 0u; p < nelements; ++p)
     {
         m->array_double_tmp[nelements + p] = 
             m->array_double_tmp[p] * (p_none / (1.0 - m->array_double_tmp[p]));
@@ -614,7 +631,7 @@ inline int roulette(
     if (r < cumsum)
         return -1;
 
-    for (unsigned int p = 0u; p < nelements; ++p)
+    for (epiworld_fast_uint p = 0u; p < nelements; ++p)
     {
         // If it yield here, then bingo, the individual will acquire the disease
         cumsum += m->array_double_tmp[nelements + p]/(p_none_or_single);
@@ -963,7 +980,7 @@ public:
     ///@{
     void set_rand_engine(std::mt19937 & eng);
     std::mt19937 * get_rand_endgine();
-    void seed(unsigned int s);
+    void seed(epiworld_fast_uint s);
     void set_rand_gamma(epiworld_double alpha, epiworld_double beta);
     epiworld_double runif();
     epiworld_double rnorm();
@@ -974,10 +991,10 @@ public:
     ///@}
 
     // Accessing parameters of the function
-    const size_t get_n_samples() {return n_samples;};
-    const size_t get_n_statistics() {return n_statistics;};
-    const size_t get_n_parameters() {return n_parameters;};
-    const epiworld_double get_epsilon() {return epsilon;};
+    size_t get_n_samples() const {return n_samples;};
+    size_t get_n_statistics() const {return n_statistics;};
+    size_t get_n_parameters() const {return n_parameters;};
+    epiworld_double get_epsilon() const {return epsilon;};
 
     const std::vector< epiworld_double > & get_params_now() {return params_now;};
     const std::vector< epiworld_double > & get_params_prev() {return params_prev;};
@@ -1235,7 +1252,7 @@ public:
     ///@{
     void set_rand_engine(std::mt19937 & eng);
     std::mt19937 * get_rand_endgine();
-    void seed(unsigned int s);
+    void seed(epiworld_fast_uint s);
     void set_rand_gamma(epiworld_double alpha, epiworld_double beta);
     epiworld_double runif();
     epiworld_double rnorm();
@@ -1246,10 +1263,10 @@ public:
     ///@}
 
     // Accessing parameters of the function
-    const size_t get_n_samples() {return n_samples;};
-    const size_t get_n_statistics() {return n_statistics;};
-    const size_t get_n_parameters() {return n_parameters;};
-    const epiworld_double get_epsilon() {return epsilon;};
+    size_t get_n_samples() const {return n_samples;};
+    size_t get_n_statistics() const {return n_statistics;};
+    size_t get_n_parameters() const {return n_parameters;};
+    epiworld_double get_epsilon() const {return epsilon;};
 
     const std::vector< epiworld_double > & get_params_now() {return params_now;};
     const std::vector< epiworld_double > & get_params_prev() {return params_prev;};
@@ -1278,10 +1295,6 @@ public:
 //////////////////////////////////////////////////////////////////////////////*/
 
 
-
-#ifndef epiworld_double
-    #define epiworld_double float
-#endif
 
 /**
  * @brief Proposal function
@@ -1420,7 +1433,7 @@ inline epiworld_double kernel_fun_uniform(
 
 }
 
-constexpr epiworld_double sqrt2pi() {return std::sqrt(2.0 * M_PI);}
+#define sqrt2pi() 2.5066282746310002416
 
 /**
  * @brief Gaussian kernel
@@ -1543,7 +1556,7 @@ inline void LFMCMC<TData>::run(
         summary_fun(proposed_stats_i, data_i, this);
 
         // Step 4: Compute the hastings ratio using the kernel function
-        double hr = kernel_fun(proposed_stats_i, observed_stats, epsilon, this);
+        epiworld_double hr = kernel_fun(proposed_stats_i, observed_stats, epsilon, this);
         sampled_stats_prob[i] = hr;
 
         // Storing data
@@ -1551,11 +1564,11 @@ inline void LFMCMC<TData>::run(
             sampled_stats[i * n_statistics + k] = proposed_stats_i[k];
         
         // Running Hastings ratio
-        double r      = runif();
+        epiworld_double r      = runif();
         drawn_prob[i] = r;
 
         // Step 5: Update if likely
-        if (r < std::min(1.0, hr / accepted_params_prob[i - 1u]))
+        if (r < std::min(static_cast<epiworld_double>(1.0), hr / accepted_params_prob[i - 1u]))
         {
             accepted_params_prob[i] = hr;
             sampled_accepted[i]     = true;
@@ -1644,7 +1657,7 @@ inline epiworld_double LFMCMC<TData>::rgamma(
 }
 
 template<typename TData>
-inline void LFMCMC<TData>::seed(unsigned int s) {
+inline void LFMCMC<TData>::seed(epiworld_fast_uint s) {
 
     this->engine->seed(s);
 
@@ -2034,8 +2047,8 @@ private:
     std::vector< int > data_dates;
     std::vector< epiworld_double > data_data;
 
-    unsigned int k = 0u;
-    unsigned int n = 0u;
+    epiworld_fast_uint k = 0u;
+    epiworld_fast_uint n = 0u;
 
     int last_day = -1;
 
@@ -2061,7 +2074,7 @@ public:
     ///@{
     void add(std::vector<epiworld_double> x);
     void add(
-        unsigned int j,
+        epiworld_fast_uint j,
         epiworld_double x
         );
     ///@}
@@ -2075,12 +2088,12 @@ public:
      */
     ///@{
     epiworld_double & operator()(
-        unsigned int i,
-        unsigned int j
+        epiworld_fast_uint i,
+        epiworld_fast_uint j
         );
 
     epiworld_double & operator()(
-        unsigned int i,
+        epiworld_fast_uint i,
         std::string name
         );
     ///@}
@@ -2097,8 +2110,8 @@ public:
         std::vector< epiworld_double > * data = nullptr
     );
 
-    unsigned int nrow() const;
-    unsigned int ncol() const;
+    epiworld_fast_uint nrow() const;
+    epiworld_fast_uint ncol() const;
 
     void write(std::string fn);
     void print() const;
@@ -2159,7 +2172,7 @@ inline void UserData<TSeq>::add(std::vector<epiworld_double> x)
 }
 
 template<typename TSeq>
-inline void UserData<TSeq>::add(unsigned int j, epiworld_double x)
+inline void UserData<TSeq>::add(epiworld_fast_uint j, epiworld_double x)
 {
 
     // Starting with a new day?
@@ -2221,8 +2234,8 @@ inline void UserData<TSeq>::get_all(
 
 template<typename TSeq>
 inline epiworld_double & UserData<TSeq>::operator()(
-    unsigned int i,
-    unsigned int j
+    epiworld_fast_uint i,
+    epiworld_fast_uint j
 )
 {
 
@@ -2238,12 +2251,12 @@ inline epiworld_double & UserData<TSeq>::operator()(
 
 template<typename TSeq>
 inline epiworld_double & UserData<TSeq>::operator()(
-    unsigned int i,
+    epiworld_fast_uint i,
     std::string name
 )
 {
     int loc = -1;
-    for (unsigned int l = 0u; l < k; ++l)
+    for (epiworld_fast_uint l = 0u; l < k; ++l)
     {
 
         if (name == data_names[l])
@@ -2262,18 +2275,18 @@ inline epiworld_double & UserData<TSeq>::operator()(
             "in the user UserData database."
         );
 
-    return operator()(i, static_cast<unsigned int>(loc));
+    return operator()(i, static_cast<epiworld_fast_uint>(loc));
 
 }
 
 template<typename TSeq>
-inline unsigned int UserData<TSeq>::nrow() const
+inline epiworld_fast_uint UserData<TSeq>::nrow() const
 {
     return n;
 }
 
 template<typename TSeq>
-inline unsigned int UserData<TSeq>::ncol() const
+inline epiworld_fast_uint UserData<TSeq>::ncol() const
 {
     return k;
 }
@@ -2289,12 +2302,12 @@ inline void UserData<TSeq>::write(std::string fn)
         file_ud << " \"" + cn + "\"";
     file_ud << "\n";
     
-    unsigned int ndata = 0u;
-    for (unsigned int i = 0u; i < n; ++i)
+    epiworld_fast_uint ndata = 0u;
+    for (epiworld_fast_uint i = 0u; i < n; ++i)
     {
         file_ud << data_dates[i];
 
-        for (unsigned int j = 0u; j < k; ++j)
+        for (epiworld_fast_uint j = 0u; j < k; ++j)
             file_ud << " " << data_data[ndata++];
 
         file_ud << "\n";
@@ -2319,14 +2332,14 @@ inline void UserData<TSeq>::print() const
 
     printf_epiworld("\n");
     
-    unsigned int ndata = 0u;
+    epiworld_fast_uint ndata = 0u;
     
-    for (unsigned int i = 0u; i < n; ++i)
+    for (epiworld_fast_uint i = 0u; i < n; ++i)
     {
 
         printf_epiworld("%i", data_dates[i]);
 
-        for (unsigned int j = 0u; j < k; ++j)
+        for (epiworld_fast_uint j = 0u; j < k; ++j)
         {
 
             printf_epiworld(" %.2f", data_data[ndata++]);
@@ -2380,9 +2393,10 @@ inline std::vector<int> default_seq_hasher<std::vector<int>>(const std::vector<i
 
 template<>
 inline std::vector<int> default_seq_hasher<std::vector<bool>>(const std::vector<bool> & x) {
-    std::vector<int> ans;
+    std::vector<int> ans(x.size());
+    size_t j = 0;
     for (const auto & i : x)
-        ans.push_back(i? 1 : 0);
+        ans[j++] = i? 1 : 0;
     return ans;
 }
 
@@ -2676,7 +2690,7 @@ public:
     
     void set_user_data(std::vector< std::string > names);
     void add_user_data(std::vector< epiworld_double > x);
-    void add_user_data(unsigned int j, epiworld_double x);
+    void add_user_data(epiworld_fast_uint j, epiworld_double x);
     UserData<TSeq> & get_user_data();
 
 
@@ -2793,7 +2807,7 @@ inline void DataBase<TSeq>::record()
         for (auto & p : variant_id)
         {
 
-            for (unsigned int s = 0u; s < model->nstatus; ++s)
+            for (epiworld_fast_uint s = 0u; s < model->nstatus; ++s)
             {
 
                 hist_variant_date.push_back(model->today());
@@ -2809,7 +2823,7 @@ inline void DataBase<TSeq>::record()
         for (auto & p : tool_id)
         {
 
-            for (unsigned int s = 0u; s < model->nstatus; ++s)
+            for (epiworld_fast_uint s = 0u; s < model->nstatus; ++s)
             {
 
                 hist_tool_date.push_back(model->today());
@@ -2822,7 +2836,7 @@ inline void DataBase<TSeq>::record()
         }
 
         // Recording the overall history
-        for (unsigned int s = 0u; s < model->nstatus; ++s)
+        for (epiworld_fast_uint s = 0u; s < model->nstatus; ++s)
         {
             hist_total_date.push_back(model->today());
             hist_total_nvariants_active.push_back(today_total_nvariants_active);
@@ -2868,8 +2882,8 @@ inline void DataBase<TSeq>::record_variant(Virus<TSeq> & v)
 
     // Updating registry
     std::vector< int > hash = seq_hasher(*v.get_sequence());
-    unsigned int old_id = v.get_id();
-    unsigned int new_id;
+    epiworld_fast_uint old_id = v.get_id();
+    epiworld_fast_uint new_id;
     if (variant_id.find(hash) == variant_id.end())
     {
 
@@ -2920,8 +2934,8 @@ inline void DataBase<TSeq>::record_tool(Tool<TSeq> & t)
 
     // Updating registry
     std::vector< int > hash = seq_hasher(*t.get_sequence());
-    unsigned int old_id = t.get_id();
-    unsigned int new_id;
+    epiworld_fast_uint old_id = t.get_id();
+    epiworld_fast_uint new_id;
     if (tool_id.find(hash) == tool_id.end())
     {
 
@@ -3092,8 +3106,8 @@ inline void DataBase<TSeq>::get_today_variant(
     counts.resize(today_variant.size(),0);
 
     int n = 0u;
-    for (unsigned int v = 0u; v < today_variant.size(); ++v)
-        for (unsigned int s = 0u; s < model->status_labels.size(); ++s)
+    for (epiworld_fast_uint v = 0u; v < today_variant.size(); ++v)
+        for (epiworld_fast_uint s = 0u; s < model->status_labels.size(); ++s)
         {
             status[n]   = model->status_labels[s];
             id[n]       = static_cast<int>(v);
@@ -3117,7 +3131,7 @@ inline void DataBase<TSeq>::get_hist_total(
     if (status != nullptr)
     {
         status->resize(hist_total_status.size(), "");
-        for (unsigned int i = 0u; i < hist_total_status.size(); ++i)
+        for (epiworld_fast_uint i = 0u; i < hist_total_status.size(); ++i)
             status->operator[](i) = model->status_labels[hist_total_status[i]];
     }
 
@@ -3142,7 +3156,7 @@ inline void DataBase<TSeq>::get_hist_variant(
     
     id = hist_variant_id;
     status.resize(hist_variant_status.size(), "");
-    for (unsigned int i = 0u; i < hist_variant_status.size(); ++i)
+    for (epiworld_fast_uint i = 0u; i < hist_variant_status.size(); ++i)
         status[i] = labels[hist_variant_status[i]];
 
     counts = hist_variant_counts;
@@ -3191,7 +3205,7 @@ inline void DataBase<TSeq>::write_data(
         file_variant <<
             "date " << "id " << "status " << "n\n";
 
-        for (unsigned int i = 0; i < hist_variant_id.size(); ++i)
+        for (epiworld_fast_uint i = 0; i < hist_variant_id.size(); ++i)
             file_variant <<
                 hist_variant_date[i] << " " <<
                 hist_variant_id[i] << " " <<
@@ -3225,7 +3239,7 @@ inline void DataBase<TSeq>::write_data(
         file_tool_hist <<
             "date " << "id " << "status " << "n\n";
 
-        for (unsigned int i = 0; i < hist_tool_id.size(); ++i)
+        for (epiworld_fast_uint i = 0; i < hist_tool_id.size(); ++i)
             file_tool_hist <<
                 hist_tool_date[i] << " " <<
                 hist_tool_id[i] << " " <<
@@ -3240,7 +3254,7 @@ inline void DataBase<TSeq>::write_data(
         file_total <<
             "date " << "nvariants " << "status " << "counts\n";
 
-        for (unsigned int i = 0; i < hist_total_date.size(); ++i)
+        for (epiworld_fast_uint i = 0; i < hist_total_date.size(); ++i)
             file_total <<
                 hist_total_date[i] << " " <<
                 hist_total_nvariants_active[i] << " \"" <<
@@ -3254,7 +3268,7 @@ inline void DataBase<TSeq>::write_data(
         file_transmission <<
             "date " << "variant " << "source_exposure_date " << "source " << "target\n";
 
-        for (unsigned int i = 0; i < transmission_target.size(); ++i)
+        for (epiworld_fast_uint i = 0; i < transmission_target.size(); ++i)
             file_transmission <<
                 transmission_date[i] << " " <<
                 transmission_variant[i] << " " <<
@@ -3390,7 +3404,7 @@ inline void DataBase<TSeq>::add_user_data(
 
 template<typename TSeq>
 inline void DataBase<TSeq>::add_user_data(
-    unsigned int k,
+    epiworld_fast_uint k,
     epiworld_double x
 )
 {
@@ -3573,10 +3587,10 @@ inline std::vector< epiworld_double > DataBase<TSeq>::transition_probability(
 class AdjList {
 private:
 
-    std::vector<std::map<unsigned int, unsigned int>> dat;
+    std::vector<std::map<epiworld_fast_uint, epiworld_fast_uint>> dat;
     bool directed;
-    unsigned int N = 0;
-    unsigned int E = 0;
+    epiworld_fast_uint N = 0;
+    epiworld_fast_uint E = 0;
 
 public:
 
@@ -3594,11 +3608,16 @@ public:
      * @param directed Bool true if the network is directed
      */
     AdjList(
-        const std::vector< unsigned int > & source,
-        const std::vector< unsigned int > & target,
+        const std::vector< epiworld_fast_uint > & source,
+        const std::vector< epiworld_fast_uint > & target,
         int size,
         bool directed
         );
+
+    AdjList(AdjList && a); // Move constructor
+    AdjList(const AdjList & a); // Copy constructor
+    AdjList& operator=(const AdjList& a);
+
 
     /**
      * @brief Read an edgelist
@@ -3617,15 +3636,15 @@ public:
         bool directed = true
         );
 
-    std::map<unsigned int, unsigned int> operator()(
-        unsigned int i
+    std::map<epiworld_fast_uint, epiworld_fast_uint> operator()(
+        epiworld_fast_uint i
         ) const;
         
-    void print(unsigned int limit = 20u) const;
+    void print(epiworld_fast_uint limit = 20u) const;
     size_t vcount() const; ///< Number of vertices/nodes in the network.
     size_t ecount() const; ///< Number of edges/arcs/ties in the network.
     
-    std::vector<std::map<unsigned int,unsigned int>> & get_dat() {
+    std::vector<std::map<epiworld_fast_uint,epiworld_fast_uint>> & get_dat() {
         return dat;
     };
 
@@ -3658,18 +3677,18 @@ public:
 #define EPIWORLD_ADJLIST_MEAT_HPP
 
 inline AdjList::AdjList(
-    const std::vector< unsigned int > & source,
-    const std::vector< unsigned int > & target,
+    const std::vector< epiworld_fast_uint > & source,
+    const std::vector< epiworld_fast_uint > & target,
     int size,
     bool directed
 ) : directed(directed) {
 
 
-    dat.resize(size, std::map<unsigned int,unsigned int>({}));
+    dat.resize(size, std::map<epiworld_fast_uint,epiworld_fast_uint>({}));
     int max_id = size - 1;
 
     int i,j;
-    for (unsigned int m = 0; m < source.size(); ++m)
+    for (epiworld_fast_uint m = 0; m < source.size(); ++m)
     {
 
         i = source[m];
@@ -3689,7 +3708,7 @@ inline AdjList::AdjList(
 
         // Adding nodes
         if (dat[i].find(j) == dat[i].end())
-            dat[i].insert(std::pair<unsigned int, unsigned int>(j, 1u));
+            dat[i].insert(std::pair<epiworld_fast_uint, epiworld_fast_uint>(j, 1u));
         else
             dat[i][j]++; 
         
@@ -3697,7 +3716,7 @@ inline AdjList::AdjList(
         {
 
             if (dat[j].find(i) == dat[j].end())
-                dat[j].insert(std::pair<unsigned int, unsigned int>(j, 1u));
+                dat[j].insert(std::pair<epiworld_fast_uint, epiworld_fast_uint>(j, 1u));
             else
                 dat[j][i]++;
 
@@ -3711,6 +3730,38 @@ inline AdjList::AdjList(
 
     return;
 
+}
+
+
+inline AdjList::AdjList(AdjList && a) :
+    dat(std::move(a.dat)),
+    directed(a.directed),
+    N(a.N),
+    E(a.E)
+{
+
+}
+
+inline AdjList::AdjList(const AdjList & a) :
+    dat(a.dat),
+    directed(a.directed),
+    N(a.N),
+    E(a.E)
+{
+
+}
+
+inline AdjList& AdjList::operator=(const AdjList& a)
+{
+    if (this == &a)
+        return *this;
+
+    this->dat = a.dat;
+    this->directed = a.directed;
+    this->N = a.N;
+    this->E = a.E;
+
+    return *this;
 }
 
 inline void AdjList::read_edgelist(
@@ -3727,8 +3778,11 @@ inline void AdjList::read_edgelist(
         throw std::logic_error("The file " + fn + " was not found.");
 
     int linenum = 0;
-    std::vector< unsigned int > source_;
-    std::vector< unsigned int > target_;
+    std::vector< epiworld_fast_uint > source_;
+    std::vector< epiworld_fast_uint > target_;
+
+    source_.reserve(1e5);
+    target_.reserve(1e5);
 
     int max_id = size - 1;
 
@@ -3774,8 +3828,8 @@ inline void AdjList::read_edgelist(
 
 }
 
-inline std::map<unsigned int,unsigned int> AdjList::operator()(
-    unsigned int i
+inline std::map<epiworld_fast_uint,epiworld_fast_uint> AdjList::operator()(
+    epiworld_fast_uint i
     ) const {
 
     if (i >= N)
@@ -3783,13 +3837,14 @@ inline std::map<unsigned int,unsigned int> AdjList::operator()(
             "The vertex id " + std::to_string(i) + " is not in the network."
             );
 
-    dat[i];
+    return dat[i];
 
 }
-inline void AdjList::print(unsigned int limit) const {
+
+inline void AdjList::print(epiworld_fast_uint limit) const {
 
 
-    unsigned int counter = 0;
+    epiworld_fast_uint counter = 0;
     printf_epiworld("Nodeset:\n");
     int i = -1;
     for (auto & n : dat)
@@ -3887,11 +3942,11 @@ inline void rewire_degseq(
 {
 
     // Identifying individuals with degree > 0
-    std::vector< unsigned int > non_isolates;
+    std::vector< epiworld_fast_uint > non_isolates;
     std::vector< epiworld_double > weights;
     epiworld_double nedges = 0.0;
     // std::vector< Agent<TSeq> > * agents = model->get_agents();
-    for (unsigned int i = 0u; i < agents->size(); ++i)
+    for (epiworld_fast_uint i = 0u; i < agents->size(); ++i)
     {
         if (agents->operator[](i).get_neighbors().size() > 0u)
         {
@@ -3907,14 +3962,14 @@ inline void rewire_degseq(
 
     // Cumulative probs
     weights[0u] /= nedges;
-    for (unsigned int i = 1u; i < non_isolates.size(); ++i)
+    for (epiworld_fast_uint i = 1u; i < non_isolates.size(); ++i)
     {
          weights[i] /= nedges;
          weights[i] += weights[i - 1u];
     }
 
     // Only swap if needed
-    unsigned int N = non_isolates.size();
+    epiworld_fast_uint N = non_isolates.size();
     epiworld_double prob;
     int nrewires = floor(proportion * nedges);
     while (nrewires-- > 0)
@@ -3923,7 +3978,7 @@ inline void rewire_degseq(
         // Picking egos
         prob = model->runif();
         int id0 = N - 1;
-        for (unsigned int i = 0u; i < N; ++i)
+        for (epiworld_fast_uint i = 0u; i < N; ++i)
             if (prob <= weights[i])
             {
                 id0 = i;
@@ -3932,7 +3987,7 @@ inline void rewire_degseq(
 
         prob = model->runif();
         int id1 = N - 1;
-        for (unsigned int i = 0u; i < N; ++i)
+        for (epiworld_fast_uint i = 0u; i < N; ++i)
             if (prob <= weights[i])
             {
                 id1 = i;
@@ -3961,7 +4016,7 @@ inline void rewire_degseq(
         if (!model->is_directed())
         {
             // Picking 0's alter
-            unsigned int n0,n1;
+            epiworld_fast_uint n0,n1;
             Agent<TSeq> & p01 = agents->operator[](p0.get_neighbors()[id01]->get_id());
             for (n0 = 0; n0 < p01.get_neighbors().size(); ++n0)
             {
@@ -4005,9 +4060,14 @@ inline void rewire_degseq(
 {
 
     // Identifying individuals with degree > 0
-    std::vector< int > nties(agents->vcount(), 0); 
-    std::vector< unsigned int > non_isolates;
+    std::vector< epiworld_fast_int > nties(agents->vcount(), 0); 
+    
+    std::vector< epiworld_fast_uint > non_isolates;
+    non_isolates.reserve(nties.size());
+
     std::vector< epiworld_double > weights;
+    weights.reserve(nties.size());
+
     epiworld_double nedges = 0.0;
     // std::vector< Agent<TSeq> > * agents = model->get_agents();
     auto & dat = agents->get_dat();
@@ -4042,25 +4102,26 @@ inline void rewire_degseq(
 
     // Cumulative probs
     weights[0u] /= nedges;
-    for (unsigned int i = 1u; i < non_isolates.size(); ++i)
+    for (epiworld_fast_uint i = 1u; i < non_isolates.size(); ++i)
     {
          weights[i] /= nedges;
          weights[i] += weights[i - 1u];
     }
 
     // Only swap if needed
-    unsigned int N = non_isolates.size();
+    epiworld_fast_uint N = non_isolates.size();
     epiworld_double prob;
     int nrewires = floor(proportion * nedges / (
         agents->is_directed() ? 1.0 : 2.0
     ));
+
     while (nrewires-- > 0)
     {
 
         // Picking egos
         prob = model->runif();
         int id0 = N - 1;
-        for (unsigned int i = 0u; i < N; ++i)
+        for (epiworld_fast_uint i = 0u; i < N; ++i)
             if (prob <= weights[i])
             {
                 id0 = i;
@@ -4069,7 +4130,7 @@ inline void rewire_degseq(
 
         prob = model->runif();
         int id1 = N - 1;
-        for (unsigned int i = 0u; i < N; ++i)
+        for (epiworld_fast_uint i = 0u; i < N; ++i)
             if (prob <= weights[i])
             {
                 id1 = i;
@@ -4083,8 +4144,8 @@ inline void rewire_degseq(
         if (id1 >= static_cast<int>(N))
             id1 = 0;
 
-        std::map<unsigned int,unsigned int> & p0 = agents->get_dat()[non_isolates[id0]];
-        std::map<unsigned int,unsigned int> & p1 = agents->get_dat()[non_isolates[id1]];
+        std::map<epiworld_fast_uint,epiworld_fast_uint> & p0 = agents->get_dat()[non_isolates[id0]];
+        std::map<epiworld_fast_uint,epiworld_fast_uint> & p1 = agents->get_dat()[non_isolates[id1]];
 
         // Picking alters (relative location in their lists)
         // In this case, these are uniformly distributed within the list
@@ -4110,8 +4171,8 @@ inline void rewire_degseq(
         if (!agents->is_directed())
         {
 
-            std::map<unsigned int,unsigned int> & p01 = agents->get_dat()[id01];
-            std::map<unsigned int,unsigned int> & p11 = agents->get_dat()[id11];
+            std::map<epiworld_fast_uint,epiworld_fast_uint> & p01 = agents->get_dat()[id01];
+            std::map<epiworld_fast_uint,epiworld_fast_uint> & p11 = agents->get_dat()[id11];
 
             std::swap(p01[id0], p11[id1]);
             
@@ -4128,14 +4189,14 @@ inline void rewire_degseq(
 
 template<typename TSeq>
 inline AdjList rgraph_bernoulli(
-    unsigned int n,
+    epiworld_fast_uint n,
     epiworld_double p,
     bool directed,
     Model<TSeq> & model
 ) {
 
-    std::vector< unsigned int > source;
-    std::vector< unsigned int > target;
+    std::vector< epiworld_fast_uint > source;
+    std::vector< epiworld_fast_uint > target;
 
     // Checking the density (how many)
     std::binomial_distribution<> d(
@@ -4143,13 +4204,13 @@ inline AdjList rgraph_bernoulli(
         p
     );
 
-    unsigned int m = d(*model.get_rand_endgine());
+    epiworld_fast_uint m = d(*model.get_rand_endgine());
 
     source.resize(m);
     target.resize(m);
 
     int a,b;
-    for (unsigned int i = 0u; i < m; ++i)
+    for (epiworld_fast_uint i = 0u; i < m; ++i)
     {
         a = floor(model.runif() * n);
 
@@ -4170,7 +4231,7 @@ inline AdjList rgraph_bernoulli(
 
     }
 
-    AdjList al(source, target, directed, 0, static_cast<int>(n) - 1);
+    AdjList al(source, target, static_cast<int>(n), directed);
 
     return al;
     
@@ -4178,14 +4239,14 @@ inline AdjList rgraph_bernoulli(
 
 template<typename TSeq>
 inline AdjList rgraph_bernoulli2(
-    unsigned int n,
+    epiworld_fast_uint n,
     epiworld_double p,
     bool directed,
     Model<TSeq> & model
 ) {
 
-    std::vector< unsigned int > source;
-    std::vector< unsigned int > target;
+    std::vector< epiworld_fast_uint > source;
+    std::vector< epiworld_fast_uint > target;
 
     // Checking the density (how many)
     std::binomial_distribution<> d(
@@ -4197,7 +4258,7 @@ inline AdjList rgraph_bernoulli2(
     // elements sampled. If n * n, then each diag element has
     // 1/(n^2) chance of sampling
 
-    unsigned int m = d(*model.get_rand_endgine());
+    epiworld_fast_uint m = d(*model.get_rand_endgine());
 
     source.resize(m);
     target.resize(m);
@@ -4205,7 +4266,7 @@ inline AdjList rgraph_bernoulli2(
     double n2 = static_cast<double>(n * n);
 
     int loc,row,col;
-    for (unsigned int i = 0u; i < m; ++i)
+    for (epiworld_fast_uint i = 0u; i < m; ++i)
     {
         loc = floor(model.runif() * n2);
         col = floor(static_cast<double>(loc)/static_cast<double>(n));
@@ -4220,35 +4281,35 @@ inline AdjList rgraph_bernoulli2(
 
     }
 
-    AdjList al(source, target, directed, 0, static_cast<int>(n) - 1);
+    AdjList al(source, target, static_cast<int>(n), directed);
 
     return al;
     
 }
 
 inline AdjList rgraph_ring_lattice(
-    unsigned int n,
-    unsigned int k,
+    epiworld_fast_uint n,
+    epiworld_fast_uint k,
     bool directed = false
 ) {
 
     if ((n - 1u) < k)
         throw std::logic_error("k can be at most n - 1.");
 
-    std::vector< unsigned int > source;
-    std::vector< unsigned int > target;
+    std::vector< epiworld_fast_uint > source;
+    std::vector< epiworld_fast_uint > target;
 
     // if (!directed)
-    //     if (k > 1u) k = static_cast< unsigned int >(floor(k / 2.0));
+    //     if (k > 1u) k = static_cast< epiworld_fast_uint >(floor(k / 2.0));
 
-    for (unsigned int i = 0; i < n; ++i)
+    for (epiworld_fast_uint i = 0; i < n; ++i)
     {
 
-        for (unsigned int j = 1u; j <= k; ++j)
+        for (epiworld_fast_uint j = 1u; j <= k; ++j)
         {
 
             // Next neighbor
-            unsigned int l = i + j;
+            epiworld_fast_uint l = i + j;
             if (l >= n) l = l - n;
 
             source.push_back(i);
@@ -4264,8 +4325,8 @@ inline AdjList rgraph_ring_lattice(
 
 template<typename TSeq>
 inline AdjList rgraph_smallworld(
-    unsigned int n,
-    unsigned int k,
+    epiworld_fast_uint n,
+    epiworld_fast_uint k,
     epiworld_double p,
     bool directed,
     Model<TSeq> & model
@@ -4305,12 +4366,6 @@ inline AdjList rgraph_smallworld(
 #ifndef EPIWORLD_QUEUE_BONES_HPP
 #define EPIWORLD_QUEUE_BONES_HPP
 
-enum QueueValues {
-    NoOne,
-    OnlySelf,
-    Everyone
-};
-
 /**
  * @brief Controls which agents are verified at each step
  * 
@@ -4321,7 +4376,7 @@ enum QueueValues {
  * 
  * @tparam TSeq 
  */
-template<typename TSeq = int>
+template<typename TSeq>
 class Queue
 {
 
@@ -4342,7 +4397,7 @@ public:
 
     void operator+=(Agent<TSeq> * p);
     void operator-=(Agent<TSeq> * p);
-    epiworld_fast_int & operator[](unsigned int i);
+    epiworld_fast_int & operator[](epiworld_fast_uint i);
 
     // void initialize(Model<TSeq> * m, Agent<TSeq> * p);
     void set_model(Model<TSeq> * m);
@@ -4370,7 +4425,7 @@ inline void Queue<TSeq>::operator-=(Agent<TSeq> * p)
 }
 
 template<typename TSeq>
-inline epiworld_fast_int & Queue<TSeq>::operator[](unsigned int i)
+inline epiworld_fast_int & Queue<TSeq>::operator[](epiworld_fast_uint i)
 {
     return active[i];
 }
@@ -4455,8 +4510,8 @@ inline epiworld_double death_reduction_mixer_default(
     Model<TSeq>* m
     );
 
-template<typename TSeq = int>
-inline std::function<void(size_t,Model<TSeq>*)> save_run(
+template<typename TSeq>
+inline std::function<void(size_t,Model<TSeq>*)> make_save_run(
     std::string fmt = "%03lu-episimulation.csv",
     bool total_hist = true,
     bool variant_info = false,
@@ -4483,13 +4538,15 @@ inline std::function<void(size_t,Model<TSeq>*)> save_run(
  * @tparam TSeq Type of sequence. In principle, users can build models in which
  * virus and human sequence is represented as numeric vectors (if needed.)
  */
-template<typename TSeq = int>
+template<typename TSeq>
 class Model {
     friend class Agent<TSeq>;
     friend class AgentsSample<TSeq>;
     friend class DataBase<TSeq>;
     friend class Queue<TSeq>;
 private:
+
+    std::string name = ""; ///< Name of the model
 
     DataBase<TSeq> db = DataBase<TSeq>(*this);
 
@@ -4552,11 +4609,17 @@ private:
     std::shared_ptr< std::gamma_distribution<> > rgammad = 
         std::make_shared< std::gamma_distribution<> >();
 
+    std::shared_ptr< std::lognormal_distribution<> > rlognormald =
+        std::make_shared< std::lognormal_distribution<> >();
+
+    std::shared_ptr< std::exponential_distribution<> > rexpd =
+        std::make_shared< std::exponential_distribution<> >();
+
     std::function<void(std::vector<Agent<TSeq>>*,Model<TSeq>*,epiworld_double)> rewire_fun;
     epiworld_double rewire_prop;
         
     std::map<std::string, epiworld_double > parameters;
-    unsigned int ndays;
+    epiworld_fast_uint ndays;
     Progress pb;
 
     std::vector< UpdateFun<TSeq> >    status_fun = {};
@@ -4577,7 +4640,7 @@ private:
     // std::chrono::milliseconds
     std::chrono::duration<epiworld_double,std::micro> time_elapsed = 
         std::chrono::duration<epiworld_double,std::micro>::zero();
-    unsigned int n_replicates = 0u;
+    epiworld_fast_uint n_replicates = 0u;
     void chrono_start();
     void chrono_end();
 
@@ -4688,13 +4751,22 @@ public:
     ///@{
     void set_rand_engine(std::mt19937 & eng);
     std::mt19937 * get_rand_endgine();
-    void seed(unsigned int s);
+    void seed(epiworld_fast_uint s);
+    void set_rand_norm(epiworld_double mean, epiworld_double sd);
+    void set_rand_unif(epiworld_double a, epiworld_double b);
+    void set_rand_exp(epiworld_double lambda);
     void set_rand_gamma(epiworld_double alpha, epiworld_double beta);
+    void set_rand_lognormal(epiworld_double mean, epiworld_double shape);
     epiworld_double runif();
+    epiworld_double runif(epiworld_double a, epiworld_double b);
     epiworld_double rnorm();
     epiworld_double rnorm(epiworld_double mean, epiworld_double sd);
     epiworld_double rgamma();
     epiworld_double rgamma(epiworld_double alpha, epiworld_double beta);
+    epiworld_double rexp();
+    epiworld_double rexp(epiworld_double lambda);
+    epiworld_double rlognormal();
+    epiworld_double rlognormal(epiworld_double mean, epiworld_double shape);
     ///@}
 
     /**
@@ -4710,11 +4782,13 @@ public:
      */
     ///@{
     void add_virus(Virus<TSeq> v, epiworld_double preval);
-    void add_virus_n(Virus<TSeq> v, unsigned int preval);
+    void add_virus_n(Virus<TSeq> v, epiworld_fast_uint preval);
+    void add_virus_fun(Virus<TSeq> v, VirusToAgentFun<TSeq> fun);
     void add_tool(Tool<TSeq> t, epiworld_double preval);
-    void add_tool_n(Tool<TSeq> t, unsigned int preval);
+    void add_tool_n(Tool<TSeq> t, epiworld_fast_uint preval);
+    void add_tool_fun(Tool<TSeq> t, ToolToAgentFun<TSeq> fun);
     void add_entity(Entity<TSeq> e, epiworld_double preval);
-    void add_entity_n(Entity<TSeq> e, unsigned int preval);
+    void add_entity_n(Entity<TSeq> e, epiworld_fast_uint preval);
     void add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> fun);
     ///@}
 
@@ -4738,11 +4812,12 @@ public:
     bool is_directed() const;
     std::vector< Agent<TSeq> > * get_agents();
     void agents_smallworld(
-        unsigned int n = 1000,
-        unsigned int k = 5,
+        epiworld_fast_uint n = 1000,
+        epiworld_fast_uint k = 5,
         bool d = false,
         epiworld_double p = .01
         );
+    void agents_empty_graph(epiworld_fast_uint n = 1000);
     ///@}
 
     /**
@@ -4755,14 +4830,14 @@ public:
      * 
      */
     ///@{
-    void init(unsigned int ndays, unsigned int seed);
+    void init(epiworld_fast_uint ndays, epiworld_fast_uint seed);
     void update_status();
     void mutate_variant();
     void next();
     void run(); ///< Runs the simulation (after initialization)
     void run_multiple( ///< Multiple runs of the simulation
-        unsigned int nexperiments,
-        std::function<void(size_t,Model<TSeq>*)> fun = save_run<TSeq>(),
+        epiworld_fast_uint nexperiments,
+        std::function<void(size_t,Model<TSeq>*)> fun = make_save_run<TSeq>(),
         bool reset = true,
         bool verbose = true
         );
@@ -4770,9 +4845,9 @@ public:
 
     size_t get_n_variants() const;
     size_t get_n_tools() const;
-    unsigned int get_ndays() const;
-    unsigned int get_n_replicates() const;
-    void set_ndays(unsigned int ndays);
+    epiworld_fast_uint get_ndays() const;
+    epiworld_fast_uint get_n_replicates() const;
+    void set_ndays(epiworld_fast_uint ndays);
     bool get_verbose() const;
     void verbose_off();
     void verbose_on();
@@ -4835,8 +4910,8 @@ public:
         ) const;
 
     void write_edgelist(
-        std::vector< unsigned int > & source,
-        std::vector< unsigned int > & target
+        std::vector< epiworld_fast_uint > & source,
+        std::vector< epiworld_fast_uint > & target
         ) const;
     ///@}
 
@@ -4884,7 +4959,7 @@ public:
      * 
      * @details Tools can incorporate parameters included in the model.
      * Internally, parameters in the tool are stored as pointers to
-     * an std::map<> of parameters in the model. Using the `unsigned int`
+     * an std::map<> of parameters in the model. Using the `epiworld_fast_uint`
      * method directly fetches the parameters in the order these were
      * added to the tool. Accessing parameters via the `std::string` method
      * involves searching the parameter directly in the std::map<> member
@@ -4892,24 +4967,40 @@ public:
      * 
      * The `par()` function members are aliases for `get_param()`.
      * 
+     * In the case of the function `read_params`, users can pass a file
+     * listing parameters to be included in the model. Each line in the
+     * file should have the following structure:
+     * 
+     * ```
+     * [name of parameter 1]: [value in double]
+     * [name of parameter 2]: [value in double]
+     * ...
+     * ```
+     * 
+     * The only condition for parameter names is that these do not include
+     * a colon.
+     * 
+     * 
      * @param initial_val 
      * @param pname Name of the parameter to add or to fetch
+     * @param fn Path to the file containing parameters
      * @return The current value of the parameter
      * in the model.
      * 
      */
     ///@{
     epiworld_double add_param(epiworld_double initial_val, std::string pname);
-    epiworld_double get_param(unsigned int k);
+    void read_params(std::string fn);
+    epiworld_double get_param(epiworld_fast_uint k);
     epiworld_double get_param(std::string pname);
-    epiworld_double par(unsigned int k);
+    epiworld_double par(epiworld_fast_uint k);
     epiworld_double par(std::string pname);
     epiworld_double 
         *p0,*p1,*p2,*p3,*p4,*p5,*p6,*p7,*p8,*p9,
         *p10,*p11,*p12,*p13,*p14,*p15,*p16,*p17,*p18,*p19,
         *p20,*p21,*p22,*p23,*p24,*p25,*p26,*p27,*p28,*p29,
         *p30,*p31,*p32,*p33,*p34,*p35,*p36,*p37,*p38,*p39;
-    unsigned int npar_used = 0u;
+    epiworld_fast_uint npar_used = 0u;
     ///@}
 
     void get_elapsed(
@@ -4927,7 +5018,7 @@ public:
      */
     ///[@
     void set_user_data(std::vector< std::string > names);
-    void add_user_data(unsigned int j, epiworld_double x);
+    void add_user_data(epiworld_fast_uint j, epiworld_double x);
     void add_user_data(std::vector< epiworld_double > x);
     UserData<TSeq> & get_user_data();
     ///@}
@@ -4994,6 +5085,13 @@ public:
      */
     void set_agents_data(double * data_, size_t ncols_);
 
+    /**
+     * @brief Set the name object
+     * 
+     * @param name 
+     */
+    void set_name(std::string name);
+
 };
 
 #endif
@@ -5040,7 +5138,7 @@ public:
  * @return std::function<void(size_t,Model<TSeq>*)> 
  */
 template<typename TSeq>
-inline std::function<void(size_t,Model<TSeq>*)> save_run(
+inline std::function<void(size_t,Model<TSeq>*)> make_save_run(
     std::string fmt,
     bool total_hist,
     bool variant_info,
@@ -5281,7 +5379,7 @@ inline void Model<TSeq>::actions_run()
         }
 
         #ifdef EPI_DEBUG
-        if (p->status >= static_cast<epiworld_fast_int>(nstatus))
+        if (static_cast<int>(p->status) >= static_cast<int>(nstatus))
                 throw std::range_error(
                     "The new status " + std::to_string(p->status) + " is out of range. " +
                     "The model currently has " + std::to_string(nstatus - 1) + " statuses.");
@@ -5380,6 +5478,7 @@ inline epiworld_double death_reduction_mixer_default(
 
 template<typename TSeq>
 inline Model<TSeq>::Model(const Model<TSeq> & model) :
+    name(model.name),
     db(model.db),
     viruses(model.viruses),
     prevalence_virus(model.prevalence_virus),
@@ -5432,34 +5531,49 @@ inline Model<TSeq>::Model(const Model<TSeq> & model) :
 
 template<typename TSeq>
 inline Model<TSeq>::Model(Model<TSeq> && model) :
+    name(std::move(model.name)),
     db(std::move(model.db)),
+    population(std::move(model.population)),
+    population_data(std::move(model.population_data)),
+    population_data_n_features(std::move(model.population_data_n_features)),
+    directed(std::move(model.directed)),
+    // Virus
     viruses(std::move(model.viruses)),
     prevalence_virus(std::move(model.prevalence_virus)),
     prevalence_virus_as_proportion(std::move(model.prevalence_virus_as_proportion)),
     viruses_dist_funs(std::move(model.viruses_dist_funs)),
+    // Tools
     tools(std::move(model.tools)),
     prevalence_tool(std::move(model.prevalence_tool)),
     prevalence_tool_as_proportion(std::move(model.prevalence_tool_as_proportion)),
     tools_dist_funs(std::move(model.tools_dist_funs)),
+    // Entities
     entities(std::move(model.entities)),
     prevalence_entity(std::move(model.prevalence_entity)),
     prevalence_entity_as_proportion(std::move(model.prevalence_entity_as_proportion)),
     entities_dist_funs(std::move(model.entities_dist_funs)),
+    // Pseudo-RNG
     engine(std::move(model.engine)),
     runifd(std::move(model.runifd)),
+    rnormd(std::move(model.rnormd)),
+    rgammad(std::move(model.rgammad)),
+    rlognormald(std::move(model.rlognormald)),
+    rexpd(std::move(model.rexpd)),
+    // Rewiring
+    rewire_fun(std::move(model.rewire_fun)),
+    rewire_prop(std::move(model.rewire_prop)),
     parameters(std::move(model.parameters)),
+    // Others
     ndays(std::move(model.ndays)),
     pb(std::move(model.pb)),
-    verbose(std::move(model.verbose)),
-    initialized(std::move(model.initialized)),
-    current_date(std::move(model.current_date)),
-    population(std::move(model.population)),
-    directed(std::move(model.directed)),
-    global_action_functions(std::move(model.global_action_functions)),
-    global_action_dates(std::move(model.global_action_dates)),
     status_fun(std::move(model.status_fun)),
     status_labels(std::move(model.status_labels)),
     nstatus(model.nstatus),
+    verbose(std::move(model.verbose)),
+    initialized(std::move(model.initialized)),
+    current_date(std::move(model.current_date)),
+    global_action_functions(std::move(model.global_action_functions)),
+    global_action_dates(std::move(model.global_action_dates)),
     queue(std::move(model.queue)),
     use_queuing(model.use_queuing)
 {
@@ -5481,7 +5595,7 @@ inline void Model<TSeq>::clone_population(
         p.neighbors.clear();
     
     // Relinking individuals
-    for (unsigned int i = 0u; i < size(); ++i)
+    for (epiworld_fast_uint i = 0u; i < size(); ++i)
     {
         // Making room
         const Agent<TSeq> & agent_this = population[i];
@@ -5489,7 +5603,7 @@ inline void Model<TSeq>::clone_population(
 
         // Readding
         std::vector< Agent<TSeq> * > neigh = agent_this.neighbors;
-        for (unsigned int n = 0u; n < neigh.size(); ++n)
+        for (epiworld_fast_uint n = 0u; n < neigh.size(); ++n)
         {
             // Point to the right neighbors
             int loc = p[neigh[n]->get_id()].get_id();
@@ -5524,8 +5638,8 @@ inline std::vector<Agent<TSeq>> * Model<TSeq>::get_agents()
 
 template<typename TSeq>
 inline void Model<TSeq>::agents_smallworld(
-    unsigned int n,
-    unsigned int k,
+    epiworld_fast_uint n,
+    epiworld_fast_uint k,
     bool d,
     epiworld_double p
 )
@@ -5533,6 +5647,26 @@ inline void Model<TSeq>::agents_smallworld(
     agents_from_adjlist(
         rgraph_smallworld(n, k, p, d, *this)
     );
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::agents_empty_graph(
+    epiworld_fast_uint n
+) 
+{
+
+    // Resizing the people
+    population.clear();
+    population.resize(n, Agent<TSeq>());
+
+    // Filling the model and ids
+    size_t i = 0u;
+    for (auto & p : population)
+    {
+        p.model = this;
+        p.id    = i++;
+    }
+
 }
 
 template<typename TSeq>
@@ -5545,6 +5679,30 @@ template<typename TSeq>
 inline void Model<TSeq>::set_rand_gamma(epiworld_double alpha, epiworld_double beta)
 {
     rgammad = std::make_shared<std::gamma_distribution<>>(alpha,beta);
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::set_rand_norm(epiworld_double mean, epiworld_double sd)
+{ 
+    rnormd  = std::make_shared<std::normal_distribution<>>(mean, sd);
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::set_rand_unif(epiworld_double a, epiworld_double b)
+{ 
+    runifd  = std::make_shared<std::uniform_real_distribution<>>(a, b);
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::set_rand_lognormal(epiworld_double mean, epiworld_double shape)
+{ 
+    rlognormald  = std::make_shared<std::lognormal_distribution<>>(mean, shape);
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::set_rand_exp(epiworld_double lambda)
+{ 
+    rexpd  = std::make_shared<std::exponential_distribution<>>(lambda);
 }
 
 template<typename TSeq>
@@ -5564,8 +5722,8 @@ inline size_t Model<TSeq>::size() const {
 
 template<typename TSeq>
 inline void Model<TSeq>::init(
-    unsigned int ndays,
-    unsigned int seed
+    epiworld_fast_uint ndays,
+    epiworld_fast_uint seed
     ) {
 
     if (initialized) 
@@ -5650,47 +5808,49 @@ inline void Model<TSeq>::dist_virus()
     int n_left = n;
     std::iota(idx.begin(), idx.end(), 0);
 
-    for (unsigned int v = 0; v < viruses.size(); ++v)
+    for (epiworld_fast_uint v = 0; v < viruses.size(); ++v)
     {
 
         if (viruses_dist_funs[v])
         {
+
             viruses_dist_funs[v](*viruses[v], this);
-            continue;
-        }
 
-        // Picking how many
-        int nsampled;
-        if (prevalence_virus_as_proportion[v])
-        {
-            nsampled = static_cast<int>(std::floor(prevalence_virus[v] * size()));
-        }
-        else
-        {
-            nsampled = static_cast<int>(prevalence_virus[v]);
-        }
+        } else {
 
-        if (nsampled > static_cast<int>(size()))
-            throw std::range_error("There are only " + std::to_string(size()) + 
-            " individuals in the population. Cannot add the virus to " + std::to_string(nsampled));
+            // Picking how many
+            int nsampled;
+            if (prevalence_virus_as_proportion[v])
+            {
+                nsampled = static_cast<int>(std::floor(prevalence_virus[v] * size()));
+            }
+            else
+            {
+                nsampled = static_cast<int>(prevalence_virus[v]);
+            }
+
+            if (nsampled > static_cast<int>(size()))
+                throw std::range_error("There are only " + std::to_string(size()) + 
+                " individuals in the population. Cannot add the virus to " + std::to_string(nsampled));
 
 
-        VirusPtr<TSeq> virus = viruses[v];
-        
-        while (nsampled > 0)
-        {
-
-            int loc = static_cast<unsigned int>(floor(runif() * (n_left--)));
-
-            Agent<TSeq> & agent = population[idx[loc]];
+            VirusPtr<TSeq> virus = viruses[v];
             
-            // Adding action
-            agent.add_virus(virus, virus->status_init, virus->queue_init);
+            while (nsampled > 0)
+            {
 
-            // Adjusting sample
-            nsampled--;
-            std::swap(idx[loc], idx[n_left]);
+                int loc = static_cast<epiworld_fast_uint>(floor(runif() * (n_left--)));
 
+                Agent<TSeq> & agent = population[idx[loc]];
+                
+                // Adding action
+                agent.add_virus(virus, virus->status_init, virus->queue_init);
+
+                // Adjusting sample
+                nsampled--;
+                std::swap(idx[loc], idx[n_left]);
+
+            }
 
         }
 
@@ -5707,43 +5867,46 @@ inline void Model<TSeq>::dist_tools()
     // Starting first infection
     int n = size();
     std::vector< size_t > idx(n);
-    for (unsigned int t = 0; t < tools.size(); ++t)
+    for (epiworld_fast_uint t = 0; t < tools.size(); ++t)
     {
 
         if (tools_dist_funs[t])
         {
+
             tools_dist_funs[t](*tools[t], this);
-            continue;
-        }
 
-        // Picking how many
-        int nsampled;
-        if (prevalence_tool_as_proportion[t])
-        {
-            nsampled = static_cast<int>(std::floor(prevalence_tool[t] * size()));
-        }
-        else
-        {
-            nsampled = static_cast<int>(prevalence_tool[t]);
-        }
+        } else {
 
-        if (nsampled > static_cast<int>(size()))
-            throw std::range_error("There are only " + std::to_string(size()) + 
-            " individuals in the population. Cannot add the tool to " + std::to_string(nsampled));
-        
-        ToolPtr<TSeq> tool = tools[t];
+            // Picking how many
+            int nsampled;
+            if (prevalence_tool_as_proportion[t])
+            {
+                nsampled = static_cast<int>(std::floor(prevalence_tool[t] * size()));
+            }
+            else
+            {
+                nsampled = static_cast<int>(prevalence_tool[t]);
+            }
 
-        int n_left = n;
-        std::iota(idx.begin(), idx.end(), 0);
-        while (nsampled > 0)
-        {
-            int loc = static_cast<unsigned int>(floor(runif() * n_left--));
+            if (nsampled > static_cast<int>(size()))
+                throw std::range_error("There are only " + std::to_string(size()) + 
+                " individuals in the population. Cannot add the tool to " + std::to_string(nsampled));
             
-            population[idx[loc]].add_tool(tool, tool->status_init, tool->queue_init);
-            
-            nsampled--;
+            ToolPtr<TSeq> tool = tools[t];
 
-            std::swap(idx[loc], idx[n_left]);
+            int n_left = n;
+            std::iota(idx.begin(), idx.end(), 0);
+            while (nsampled > 0)
+            {
+                int loc = static_cast<epiworld_fast_uint>(floor(runif() * n_left--));
+                
+                population[idx[loc]].add_tool(tool, tool->status_init, tool->queue_init);
+                
+                nsampled--;
+
+                std::swap(idx[loc], idx[n_left]);
+
+            }
 
         }
 
@@ -5761,43 +5924,46 @@ inline void Model<TSeq>::dist_entities()
     // Starting first infection
     int n = size();
     std::vector< size_t > idx(n);
-    for (unsigned int e = 0; e < entities.size(); ++e)
+    for (epiworld_fast_uint e = 0; e < entities.size(); ++e)
     {
 
         if (entities_dist_funs[e])
         {
+
             entities_dist_funs[e](entities[e], this);
-            continue;
-        }
 
-        // Picking how many
-        int nsampled;
-        if (prevalence_entity_as_proportion[e])
-        {
-            nsampled = static_cast<int>(std::floor(prevalence_entity[e] * size()));
-        }
-        else
-        {
-            nsampled = static_cast<int>(prevalence_entity[e]);
-        }
+        } else {
 
-        if (nsampled > static_cast<int>(size()))
-            throw std::range_error("There are only " + std::to_string(size()) + 
-            " individuals in the population. Cannot add the entity to " + std::to_string(nsampled));
-        
-        Entity<TSeq> & entity = entities[e];
+            // Picking how many
+            int nsampled;
+            if (prevalence_entity_as_proportion[e])
+            {
+                nsampled = static_cast<int>(std::floor(prevalence_entity[e] * size()));
+            }
+            else
+            {
+                nsampled = static_cast<int>(prevalence_entity[e]);
+            }
 
-        int n_left = n;
-        std::iota(idx.begin(), idx.end(), 0);
-        while (nsampled > 0)
-        {
-            int loc = static_cast<unsigned int>(floor(runif() * n_left--));
+            if (nsampled > static_cast<int>(size()))
+                throw std::range_error("There are only " + std::to_string(size()) + 
+                " individuals in the population. Cannot add the entity to " + std::to_string(nsampled));
             
-            population[idx[loc]].add_entity(entity, entity.status_init, entity.queue_init);
-            
-            nsampled--;
+            Entity<TSeq> & entity = entities[e];
 
-            std::swap(idx[loc], idx[n_left]);
+            int n_left = n;
+            std::iota(idx.begin(), idx.end(), 0);
+            while (nsampled > 0)
+            {
+                int loc = static_cast<epiworld_fast_uint>(floor(runif() * n_left--));
+                
+                population[idx[loc]].add_entity(entity, entity.status_init, entity.queue_init);
+                
+                nsampled--;
+
+                std::swap(idx[loc], idx[n_left]);
+
+            }
 
         }
 
@@ -5853,13 +6019,19 @@ inline std::mt19937 * Model<TSeq>::get_rand_endgine()
 template<typename TSeq>
 inline epiworld_double Model<TSeq>::runif() {
     // CHECK_INIT()
-    return runifd->operator()(*engine);
+    return (runifd->operator())(*engine);
+}
+
+template<typename TSeq>
+inline epiworld_double Model<TSeq>::runif(epiworld_double a, epiworld_double b) {
+    // CHECK_INIT()
+    return ((runifd->operator())(*engine) * (b - a) + a);
 }
 
 template<typename TSeq>
 inline epiworld_double Model<TSeq>::rnorm() {
     // CHECK_INIT()
-    return (rnormd->operator()(*engine));
+    return (rnormd->operator())(*engine);
 }
 
 template<typename TSeq>
@@ -5870,20 +6042,48 @@ inline epiworld_double Model<TSeq>::rnorm(epiworld_double mean, epiworld_double 
 
 template<typename TSeq>
 inline epiworld_double Model<TSeq>::rgamma() {
-    return rgammad->operator()(*engine);
+    return (rgammad->operator())(*engine);
 }
 
 template<typename TSeq>
 inline epiworld_double Model<TSeq>::rgamma(epiworld_double alpha, epiworld_double beta) {
     auto old_param = rgammad->param();
     rgammad->param(std::gamma_distribution<>::param_type(alpha, beta));
-    epiworld_double ans = rgammad->operator()(*engine);
+    epiworld_double ans = (rgammad->operator())(*engine);
     rgammad->param(old_param);
     return ans;
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::seed(unsigned int s) {
+inline epiworld_double Model<TSeq>::rexp() {
+    return (rexpd->operator())(*engine);
+}
+
+template<typename TSeq>
+inline epiworld_double Model<TSeq>::rexp(epiworld_double lambda) {
+    auto old_param = rexpd->param();
+    rexpd->param(std::exponential_distribution<>::param_type(lambda));
+    epiworld_double ans = (rexpd->operator())(*engine);
+    rexpd->param(old_param);
+    return ans;
+}
+
+template<typename TSeq>
+inline epiworld_double Model<TSeq>::rlognormal() {
+    return (rlognormald->operator())(*engine);
+}
+
+template<typename TSeq>
+inline epiworld_double Model<TSeq>::rlognormal(epiworld_double mean, epiworld_double shape) {
+    auto old_param = rlognormald->param();
+    rlognormald->param(std::lognormal_distribution<>::param_type(mean, shape));
+    epiworld_double ans = (rlognormald->operator())(*engine);
+    rlognormald->param(old_param);
+    return ans;
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::seed(epiworld_fast_uint s) {
     this->engine->seed(s);
 }
 
@@ -5909,10 +6109,6 @@ inline void Model<TSeq>::add_virus(Virus<TSeq> v, epiworld_double preval)
         throw std::logic_error(
             "The virus \"" + v.get_name() + "\" has no -post- status."
             );
-    // else if (rm_ == -99)
-    //     throw std::logic_error(
-    //         "The virus \"" + v.get_name() + "\" has no -rm- status."
-    //         );
 
     // Setting the id
     v.set_id(viruses.size());
@@ -5926,7 +6122,7 @@ inline void Model<TSeq>::add_virus(Virus<TSeq> v, epiworld_double preval)
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::add_virus_n(Virus<TSeq> v, unsigned int preval)
+inline void Model<TSeq>::add_virus_n(Virus<TSeq> v, epiworld_fast_uint preval)
 {
 
     // Checking the ids
@@ -5954,6 +6150,34 @@ inline void Model<TSeq>::add_virus_n(Virus<TSeq> v, unsigned int preval)
 }
 
 template<typename TSeq>
+inline void Model<TSeq>::add_virus_fun(Virus<TSeq> v, VirusToAgentFun<TSeq> fun)
+{
+
+    // Checking the ids
+    epiworld_fast_int init_, post_, rm_;
+    v.get_status(&init_, &post_, &rm_);
+
+    if (init_ == -99)
+        throw std::logic_error(
+            "The virus \"" + v.get_name() + "\" has no -init- status."
+            );
+    else if (post_ == -99)
+        throw std::logic_error(
+            "The virus \"" + v.get_name() + "\" has no -post- status."
+            );
+
+    // Setting the id
+    v.set_id(viruses.size());
+
+    // Adding new virus
+    viruses.push_back(std::make_shared< Virus<TSeq> >(v));
+    prevalence_virus.push_back(0.0);
+    prevalence_virus_as_proportion.push_back(false);
+    viruses_dist_funs.push_back(fun);
+
+}
+
+template<typename TSeq>
 inline void Model<TSeq>::add_tool(Tool<TSeq> t, epiworld_double preval)
 {
 
@@ -5972,13 +6196,23 @@ inline void Model<TSeq>::add_tool(Tool<TSeq> t, epiworld_double preval)
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::add_tool_n(Tool<TSeq> t, unsigned int preval)
+inline void Model<TSeq>::add_tool_n(Tool<TSeq> t, epiworld_fast_uint preval)
 {
     t.id = tools.size();
     tools.push_back(std::make_shared<Tool<TSeq> >(t));
     prevalence_tool.push_back(preval);
     prevalence_tool_as_proportion.push_back(false);
     tools_dist_funs.push_back(nullptr);
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::add_tool_fun(Tool<TSeq> t, ToolToAgentFun<TSeq> fun)
+{
+    t.id = tools.size();
+    tools.push_back(std::make_shared<Tool<TSeq> >(t));
+    prevalence_tool.push_back(0.0);
+    prevalence_tool_as_proportion.push_back(false);
+    tools_dist_funs.push_back(fun);
 }
 
 
@@ -6002,7 +6236,7 @@ inline void Model<TSeq>::add_entity(Entity<TSeq> e, epiworld_double preval)
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::add_entity_n(Entity<TSeq> e, unsigned int preval)
+inline void Model<TSeq>::add_entity_n(Entity<TSeq> e, epiworld_fast_uint preval)
 {
 
     e.model = this;
@@ -6044,24 +6278,15 @@ template<typename TSeq>
 inline void Model<TSeq>::agents_from_adjlist(AdjList al) {
 
     // Resizing the people
-    population.clear();
-    population.resize(al.vcount(), Agent<TSeq>());
-
+    agents_empty_graph(al.vcount());
+    
     const auto & tmpdat = al.get_dat();
-
-    // Filling the model and ids
-    size_t i = 0u;
-    for (auto & p : population)
-    {
-        p.model = this;
-        p.id    = i++;
-    }
     
     for (size_t i = 0u; i < tmpdat.size(); ++i)
     {
 
-        population[i].id    = i;
-        population[i].model = this;
+        // population[i].id    = i;
+        // population[i].model = this;
 
         for (const auto & link: tmpdat[i])
         {
@@ -6159,7 +6384,7 @@ inline void Model<TSeq>::run()
 
 template<typename TSeq>
 inline void Model<TSeq>::run_multiple(
-    unsigned int nexperiments,
+    epiworld_fast_uint nexperiments,
     std::function<void(size_t,Model<TSeq>*)> fun,
     bool reset,
     bool verbose
@@ -6189,7 +6414,7 @@ inline void Model<TSeq>::run_multiple(
 
     }
 
-    for (unsigned int n = 0u; n < nexperiments; ++n)
+    for (epiworld_fast_uint n = 0u; n < nexperiments; ++n)
     {
         
         run();
@@ -6246,14 +6471,37 @@ inline void Model<TSeq>::update_status() {
 template<typename TSeq>
 inline void Model<TSeq>::mutate_variant() {
 
-    for (auto & p: population)
+    if (use_queuing)
     {
 
-        if (p.n_viruses > 0u)
-            for (auto & v : p.viruses)
-                v->mutate();
+        int i = -1;
+        for (auto & p: population)
+        {
+
+            if (queue[++i] == 0)
+                continue;
+
+            if (p.n_viruses > 0u)
+                for (auto & v : p.get_viruses())
+                    v->mutate();
+
+        }
 
     }
+    else 
+    {
+
+        for (auto & p: population)
+        {
+
+            if (p.n_viruses > 0u)
+                for (auto & v : p.get_viruses())
+                    v->mutate();
+
+        }
+
+    }
+    
 
 }
 
@@ -6268,18 +6516,18 @@ inline size_t Model<TSeq>::get_n_tools() const {
 }
 
 template<typename TSeq>
-inline unsigned int Model<TSeq>::get_ndays() const {
+inline epiworld_fast_uint Model<TSeq>::get_ndays() const {
     return ndays;
 }
 
 template<typename TSeq>
-inline unsigned int Model<TSeq>::get_n_replicates() const
+inline epiworld_fast_uint Model<TSeq>::get_n_replicates() const
 {
     return n_replicates;
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::set_ndays(unsigned int ndays) {
+inline void Model<TSeq>::set_ndays(epiworld_fast_uint ndays) {
     this->ndays = ndays;
 }
 
@@ -6456,13 +6704,15 @@ inline void Model<TSeq>::print() const
 
     // Horizontal line
     std::string line = "";
-    for (unsigned int i = 0u; i < 80u; ++i)
+    for (epiworld_fast_uint i = 0u; i < 80u; ++i)
         line += "_";
 
     // Prints a message if debugging is on
     EPI_DEBUG_NOTIFY_ACTIVE()
 
     printf_epiworld("\n%s\n%s\n\n",line.c_str(), "SIMULATION STUDY");
+
+    printf_epiworld("Name of the model   : %s\n", (this->name == "") ? std::string("(none)").c_str() : name.c_str());
     printf_epiworld("Population size     : %i\n", static_cast<int>(size()));
     printf_epiworld("Number of entitites : %i\n", static_cast<int>(entities.size()));
     printf_epiworld("Days (duration)     : %i (of %i)\n", today(), ndays);
@@ -6477,6 +6727,23 @@ inline void Model<TSeq>::print() const
         if (n_replicates > 1u)
         {
             printf_epiworld("Total elapsed t     : %.2f%s (%i runs)\n", total, abbr.c_str(), n_replicates);
+        }
+
+        // Elapsed time in speed
+        get_elapsed("microseconds", &elapsed, &total, &abbr, false);
+        printf_epiworld("Last run speed      : %.2f million agents x day / second\n",
+            static_cast<double>(this->size()) *
+            static_cast<double>(this->get_ndays()) /
+            static_cast<double>(elapsed)
+            );
+        if (n_replicates > 1u)
+        {
+            printf_epiworld("Average run speed   : %.2f million agents x day / second\n",
+                static_cast<double>(this->size()) *
+                static_cast<double>(this->get_ndays()) *
+                static_cast<double>(n_replicates) /
+                static_cast<double>(total)
+            );
         }
 
     } else {
@@ -6589,7 +6856,7 @@ inline void Model<TSeq>::print() const
 
     // Information about the parameters included
     printf_epiworld("\nModel parameters:\n");
-    unsigned int nchar = 0u;
+    epiworld_fast_uint nchar = 0u;
     for (auto & p : parameters)
         if (p.first.length() > nchar)
             nchar = p.first.length();
@@ -6718,7 +6985,7 @@ inline Model<TSeq> && Model<TSeq>::clone() const {
         p.neighbors.clear();
     
     // Rechecking individuals
-    for (unsigned int p = 0u; p < size(); ++p)
+    for (epiworld_fast_uint p = 0u; p < size(); ++p)
     {
         // Making room
         const Agent<TSeq> & agent_this = population[p];
@@ -6731,7 +6998,7 @@ inline Model<TSeq> && Model<TSeq>::clone() const {
 
         // Readding
         std::vector< Agent<TSeq> * > neigh = agent_this.neighbors;
-        for (unsigned int n = 0u; n < neigh.size(); ++n)
+        for (epiworld_fast_uint n = 0u; n < neigh.size(); ++n)
         {
             // Point to the right neighbors
             int loc = res.population_ids[neigh[n]->get_id()];
@@ -6788,18 +7055,18 @@ inline void Model<TSeq>::print_status_codes() const
 
     // Horizontal line
     std::string line = "";
-    for (unsigned int i = 0u; i < 80u; ++i)
+    for (epiworld_fast_uint i = 0u; i < 80u; ++i)
         line += "_";
 
     printf_epiworld("\n%s\nSTATUS CODES\n\n", line.c_str());
 
-    unsigned int nchar = 0u;
+    epiworld_fast_uint nchar = 0u;
     for (auto & p : status_labels)
         if (p.length() > nchar)
             nchar = p.length();
     
     std::string fmt = " %2i = %-" + std::to_string(nchar + 1 + 4) + "s\n";
-    for (unsigned int i = 0u; i < nstatus; ++i)
+    for (epiworld_fast_uint i = 0u; i < nstatus; ++i)
     {
 
         printf_epiworld(
@@ -6844,6 +7111,55 @@ inline epiworld_double Model<TSeq>::add_param(
     CASES_PAR(npar_used++)
     
     return initial_value;
+
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::read_params(std::string fn)
+{
+
+    std::ifstream paramsfile(fn);
+
+    if (!paramsfile)
+        throw std::logic_error("The file " + fn + " was not found.");
+
+    std::regex pattern("^([^:]+)\\s*[:]\\s*([0-9]+)(\\.[0-9]+)?\\s*$");
+
+    std::string line;
+    std::smatch match;
+    auto empty = std::sregex_iterator();
+
+    while (std::getline(paramsfile, line))
+    {
+
+        // Is it a comment or an empty line?
+        if (std::regex_match(line, std::regex("^([*].+|//.+|#.+|\\s*)$")))
+            continue;
+
+        // Finding the patter, if it doesn't match, then error
+        std::regex_match(line, match, pattern);
+
+        if (match.empty())
+            throw std::logic_error("The line does not match parameters:\n" + line);
+
+        // Capturing the number
+        std::string anumber = match[2u].str() + match[3u].str();
+        epiworld_double tmp_num = static_cast<epiworld_double>(
+            std::strtod(anumber.c_str(), nullptr)
+            );
+
+        // Trimming text
+        
+
+        add_param(
+            tmp_num,
+            std::regex_replace(
+                match[1u].str(),
+                std::regex("^\\s+|\\s+$"),
+                "")
+        );
+
+    }
 
 }
 
@@ -6947,7 +7263,7 @@ inline void Model<TSeq>::set_user_data(std::vector< std::string > names)
 }
 
 template<typename TSeq>
-inline void Model<TSeq>::add_user_data(unsigned int j, epiworld_double x)
+inline void Model<TSeq>::add_user_data(epiworld_fast_uint j, epiworld_double x)
 {
     db.add_user_data(j, x);
 }
@@ -6980,7 +7296,7 @@ template<typename TSeq>
 inline void Model<TSeq>::run_global_actions()
 {
 
-    for (unsigned int i = 0u; i < global_action_dates.size(); ++i)
+    for (epiworld_fast_uint i = 0u; i < global_action_dates.size(); ++i)
     {
 
         if (global_action_dates[i] < 0)
@@ -7043,6 +7359,12 @@ inline void Model<TSeq>::set_agents_data(double * data_, size_t ncols_)
 {
     population_data = data_;
     population_data_n_features = ncols_;
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::set_name(std::string name)
+{
+    this->name = name;
 }
 
 #undef DURCAST
@@ -7170,8 +7492,8 @@ public:
     Viruses_const() = delete;
     Viruses_const(const Agent<TSeq> & p) : dat(&p.viruses), n_viruses(&p.n_viruses) {};
 
-    typename std::vector< VIRUSPTR >::const_iterator begin();
-    typename std::vector< VIRUSPTR >::const_iterator end();
+    typename std::vector< VIRUSPTR >::const_iterator begin() const;
+    typename std::vector< VIRUSPTR >::const_iterator end() const;
 
     const VIRUSPTR & operator()(size_t i);
     const VIRUSPTR & operator[](size_t i);
@@ -7181,7 +7503,7 @@ public:
 };
 
 template<typename TSeq>
-inline typename std::vector< VIRUSPTR >::const_iterator Viruses_const<TSeq>::begin() {
+inline typename std::vector< VIRUSPTR >::const_iterator Viruses_const<TSeq>::begin() const {
 
     if (*n_viruses == 0u)
         return dat->end();
@@ -7190,7 +7512,7 @@ inline typename std::vector< VIRUSPTR >::const_iterator Viruses_const<TSeq>::beg
 }
 
 template<typename TSeq>
-inline typename std::vector< VIRUSPTR >::const_iterator Viruses_const<TSeq>::end() {
+inline typename std::vector< VIRUSPTR >::const_iterator Viruses_const<TSeq>::end() const {
      
     return begin() + *n_viruses;
 }
@@ -7266,7 +7588,7 @@ class Model;
  * having one or more tools to fight the virus. Because of this, transmisibility
  * should be a function of the agent.
  */
-template<typename TSeq = int>
+template<typename TSeq>
 class Virus {
     friend class Agent<TSeq>;
     friend class Model<TSeq>;
@@ -7386,13 +7708,13 @@ public:
     void get_status(
         epiworld_fast_int * init,
         epiworld_fast_int * end,
-        epiworld_fast_int * removed = -99
+        epiworld_fast_int * removed = nullptr
         );
 
     void get_queue(
         epiworld_fast_int * init,
         epiworld_fast_int * end,
-        epiworld_fast_int * removed = -99
+        epiworld_fast_int * removed = nullptr
         );
     ///@}
 
@@ -7961,8 +8283,8 @@ public:
     Tools_const() = delete;
     Tools_const(const Agent<TSeq> & p) : dat(&p.tools), n_tools(&p.n_tools) {};
 
-    typename std::vector< ToolPtr<TSeq> >::const_iterator begin();
-    typename std::vector< ToolPtr<TSeq> >::const_iterator end();
+    typename std::vector< ToolPtr<TSeq> >::const_iterator begin() const;
+    typename std::vector< ToolPtr<TSeq> >::const_iterator end() const;
 
     const ToolPtr<TSeq> & operator()(size_t i);
     const ToolPtr<TSeq> & operator[](size_t i);
@@ -7972,7 +8294,7 @@ public:
 };
 
 template<typename TSeq>
-inline typename std::vector< ToolPtr<TSeq> >::const_iterator Tools_const<TSeq>::begin() {
+inline typename std::vector< ToolPtr<TSeq> >::const_iterator Tools_const<TSeq>::begin() const {
 
     if (*n_tools == 0u)
         return dat->end();
@@ -7981,7 +8303,7 @@ inline typename std::vector< ToolPtr<TSeq> >::const_iterator Tools_const<TSeq>::
 }
 
 template<typename TSeq>
-inline typename std::vector< ToolPtr<TSeq> >::const_iterator Tools_const<TSeq>::end() {
+inline typename std::vector< ToolPtr<TSeq> >::const_iterator Tools_const<TSeq>::end() const {
      
     return begin() + *n_tools;
 }
@@ -8054,7 +8376,7 @@ class Tool;
  * 
  * @tparam TSeq Type of sequence
  */
-template<typename TSeq = int> 
+template<typename TSeq> 
 class Tool {
     friend class Agent<TSeq>;
     friend class Model<TSeq>;
@@ -8990,11 +9312,11 @@ inline size_t Entities_const<TSeq>::size() const noexcept
 #ifndef EPIWORLD_PERSON_MEAT_STATUS_HPP 
 #define EPIWORLD_PERSON_MEAT_STATUS_HPP
 
-template<typename TSeq>
-class Model;
+// template<typename TSeq>
+// class Model;
 
-template<typename TSeq>
-class Agent;
+// template<typename TSeq>
+// class Agent;
 
 
 /**
@@ -9019,6 +9341,10 @@ class Agent;
 #ifndef EPIWORLD_AGENT_MEAT_VIRUS_SAMPLING
 #define EPIWORLD_AGENT_MEAT_VIRUS_SAMPLING
 
+/**
+ * @brief Functions for sampling viruses
+ * 
+ */
 namespace sampler {
 
 /**
@@ -9034,7 +9360,7 @@ namespace sampler {
  * @return Virus<TSeq>* of the selected virus. If none selected (or none
  * available,) returns a nullptr;
  */
-template<typename TSeq = int>
+template<typename TSeq>
 inline std::function<void(Agent<TSeq>*,Model<TSeq>*)> make_update_susceptible(
     std::vector< epiworld_fast_uint > exclude = {}
     )
@@ -9442,7 +9768,7 @@ inline Virus<TSeq> * sample_virus_single(Agent<TSeq> * p, Model<TSeq> * m)
 
 
 
-template<typename TSeq = int>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 inline void default_update_susceptible(
     Agent<TSeq> * p,
     Model<TSeq> * m
@@ -9460,7 +9786,7 @@ inline void default_update_susceptible(
 
 }
 
-template<typename TSeq = int>
+template<typename TSeq = EPI_DEFAULT_TSEQ>
 inline void default_update_exposed(Agent<TSeq> * p, Model<TSeq> * m) {
 
     if (p->get_n_viruses() == 0u)
@@ -9591,7 +9917,7 @@ inline void default_rm_entity(Action<TSeq> & a, Model<TSeq> * m);
  * 
  * @tparam TSeq Sequence type (should match `TSeq` across the model)
  */
-template<typename TSeq = int>
+template<typename TSeq>
 class Agent {
     friend class Model<TSeq>;
     friend class Virus<TSeq>;
@@ -9599,6 +9925,7 @@ class Agent {
     friend class Viruses_const<TSeq>;
     friend class Tool<TSeq>;
     friend class Tools<TSeq>;
+    friend class Tools_const<TSeq>;
     friend class Queue<TSeq>;
     friend class Entities<TSeq>;
     friend class AgentsSample<TSeq>;
@@ -9789,9 +10116,9 @@ public:
 
     void reset();
 
-    bool has_tool(unsigned int t) const;
+    bool has_tool(epiworld_fast_uint t) const;
     bool has_tool(std::string name) const;
-    bool has_virus(unsigned int t) const;
+    bool has_virus(epiworld_fast_uint t) const;
     bool has_virus(std::string name) const;
 
     void print(bool compressed = false) const;
@@ -10122,8 +10449,9 @@ inline Agent<TSeq>::Agent(const Agent<TSeq> & p)
     in_queue = p.in_queue;
 
     // Dealing with the virus
-    viruses.reserve(p.n_viruses);
-    for (auto & v : p.viruses)
+    viruses.reserve(p.get_n_viruses());
+    const auto & viruses_ = p.get_viruses();
+    for (const auto & v : viruses_)
     {
         // Will create a copy of the virus, with the exeption of
         // the virus code
@@ -10134,8 +10462,9 @@ inline Agent<TSeq>::Agent(const Agent<TSeq> & p)
 
     n_viruses = p.n_viruses;
 
-    tools.reserve(p.n_tools);
-    for (auto & t : p.tools)
+    tools.reserve(p.get_n_tools());
+    const auto & tools_ = p.get_tools();
+    for (const auto & t : tools_)
     {
         // Will create a copy of the virus, with the exeption of
         // the virus code
@@ -10616,7 +10945,7 @@ inline void Agent<TSeq>::reset()
 }
 
 template<typename TSeq>
-inline bool Agent<TSeq>::has_tool(unsigned int t) const
+inline bool Agent<TSeq>::has_tool(epiworld_fast_uint t) const
 {
 
     for (auto & tool : tools)
@@ -10640,7 +10969,7 @@ inline bool Agent<TSeq>::has_tool(std::string name) const
 }
 
 template<typename TSeq>
-inline bool Agent<TSeq>::has_virus(unsigned int t) const
+inline bool Agent<TSeq>::has_virus(epiworld_fast_uint t) const
 {
     for (auto & v : viruses)
         if (v->get_id() == t)
@@ -10740,20 +11069,21 @@ inline const Entities_const<TSeq> Agent<TSeq>::get_entities() const
 #ifndef EPIWORLD_AGENTS_BONES_HPP
 #define EPIWORLD_AGENTS_BONES_HPP
 
-enum SAMPLETYPE {
-    MODEL,
-    ENTITY,
-    AGENT
+class SAMPLETYPE {
+public:
+    static const int MODEL  = 0;
+    static const int ENTITY = 1;
+    static const int AGENT  = 2;
 };
 
-template<typename TSeq>
-class Agent;
+// template<typename TSeq>
+// class Agent;
 
-template<typename TSeq>
-class Model;
+// template<typename TSeq>
+// class Model;
 
-template<typename TSeq>
-class Entity;
+// template<typename TSeq>
+// class Entity;
 
 /**
  * @brief Sample of agents
@@ -11055,6 +11385,1430 @@ inline void AgentsSample<TSeq>::sample_n(size_t n)
 ////////////////////////////////////////////////////////////////////////////////
 
  End of -include/epiworld/agentssample-bones.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld/models/models.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_HPP
+#define EPIWORLD_MODELS_HPP
+
+namespace epimodels {
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/sis.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_SIS_HPP 
+#define EPIWORLD_MODELS_SIS_HPP
+
+/**
+ * @brief Template for a Susceptible-Infected-Susceptible (SIS) model
+ * 
+ * @param vname std::string Name of the virus
+ * @param initial_prevalence epiworld_double Initial prevalence
+ * @param initial_efficacy epiworld_double Initial susceptibility_reduction of the immune system
+ * @param initial_recovery epiworld_double Initial recovery rate of the immune system
+ */
+template<typename TSeq = int>
+class ModelSIS : public epiworld::Model<TSeq>
+{
+
+public:
+
+    ModelSIS() {};
+
+    ModelSIS(
+        ModelSIS<TSeq> & model,
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double recovery
+    );
+
+    ModelSIS(
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double recovery
+    );
+
+};
+
+template<typename TSeq>
+inline ModelSIS<TSeq>::ModelSIS(
+    ModelSIS<TSeq> & model,
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double recovery
+    )
+{
+
+    model.set_name("Susceptible-Infected-Susceptible (SIS)");
+
+    // Adding statuses
+    model.add_status("Susceptible", epiworld::default_update_susceptible<TSeq>);
+    model.add_status("Infected", epiworld::default_update_exposed<TSeq>);
+
+    // Setting up parameters
+    model.add_param(infectiousness, "Infection rate");
+    model.add_param(recovery, "Recovery rate");
+
+    // Preparing the virus -------------------------------------------
+    epiworld::Virus<TSeq> virus(vname);
+    virus.set_status(1,0,0);
+    
+    virus.set_prob_infecting(&model("Infection rate"));
+    virus.set_prob_recovery(&model("Recovery rate"));
+    virus.set_prob_death(0.0);
+    
+    model.add_virus(virus, prevalence);
+
+    return;
+
+}
+
+template<typename TSeq>
+inline ModelSIS<TSeq>::ModelSIS(
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double recovery
+    )
+{
+
+    ModelSIS<TSeq>(
+        *this,
+        vname,
+        prevalence,
+        infectiousness,
+        recovery
+    );    
+
+    return;
+
+}
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/sis.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/sir.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_SIR_H 
+#define EPIWORLD_SIR_H
+
+/**
+ * @brief Template for a Susceptible-Infected-Removed (SIR) model
+ * 
+ * @param model A Model<TSeq> object where to set up the SIR.
+ * @param vname std::string Name of the virus
+ * @param initial_prevalence epiworld_double Initial prevalence
+ * @param initial_efficacy epiworld_double Initial susceptibility_reduction of the immune system
+ * @param initial_recovery epiworld_double Initial recovery rate of the immune system
+ */
+template<typename TSeq = int>
+class ModelSIR : public epiworld::Model<TSeq>
+{
+public:
+
+    ModelSIR() {};
+
+    ModelSIR(
+        ModelSIR<TSeq> & model,
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double recovery
+    );
+
+    ModelSIR(
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double recovery
+    );
+    
+};
+
+template<typename TSeq>
+inline ModelSIR<TSeq>::ModelSIR(
+    ModelSIR<TSeq> & model,
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double recovery
+    )
+{
+
+    // Adding statuses
+    model.add_status("Susceptible", epiworld::default_update_susceptible<TSeq>);
+    model.add_status("Infected", epiworld::default_update_exposed<TSeq>);
+    model.add_status("Recovered");
+
+    // Setting up parameters
+    model.add_param(recovery, "Prob. of Recovery");
+    model.add_param(infectiousness, "Infectiousness");
+
+    // Preparing the virus -------------------------------------------
+    epiworld::Virus<TSeq> virus(vname);
+    virus.set_status(1,2,2);
+    
+    virus.set_prob_recovery(&model("Prob. of Recovery"));
+    virus.set_prob_infecting(&model("Infectiousness"));
+    
+    model.add_virus(virus, prevalence);
+
+    model.set_name("Susceptible-Infected-Recovered (SIR)");
+
+    return;
+   
+}
+
+template<typename TSeq>
+inline ModelSIR<TSeq>::ModelSIR(
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double recovery
+    )
+{
+
+    ModelSIR<TSeq>(
+        *this,
+        vname,
+        prevalence,
+        infectiousness,
+        recovery
+        );
+
+    return;
+
+}
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/sir.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/seir.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_SEIR_HPP
+#define EPIWORLD_MODELS_SEIR_HPP
+
+/**
+ * @brief Template for a Susceptible-Exposed-Infected-Removed (SEIR) model
+ * 
+ * @param model A Model<TSeq> object where to set up the SIR.
+ * @param vname std::string Name of the virus
+ * @param initial_prevalence epiworld_double Initial prevalence
+ * @param initial_efficacy epiworld_double Initial susceptibility_reduction of the immune system
+ * @param initial_recovery epiworld_double Initial recovery rate of the immune system
+ */
+template<typename TSeq = int>
+class ModelSEIR : public epiworld::Model<TSeq>
+{
+private:
+    static const int SUSCEPTIBLE = 0;
+    static const int EXPOSED     = 1;
+    static const int INFECTED    = 2;
+    static const int REMOVED     = 3;
+
+public:
+
+    ModelSEIR() {};
+
+    ModelSEIR(
+        ModelSEIR<TSeq> & model,
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double incubation_days,
+        epiworld_double recovery
+    );
+
+    ModelSEIR(
+        std::string vname,
+        epiworld_double prevalence,
+        epiworld_double infectiousness,
+        epiworld_double incubation_days,
+        epiworld_double recovery
+    );
+    
+    epiworld::UpdateFun<TSeq> update_exposed_seir = [](
+        epiworld::Agent<TSeq> * p,
+        epiworld::Model<TSeq> * m
+    ) -> void {
+        // Does the agent become infected?
+        if (m->runif() < 1.0/(*m->p1))
+            p->change_status(ModelSEIR<TSeq>::INFECTED);
+
+        return;    
+    };
+      
+
+    epiworld::UpdateFun<TSeq> update_infected_seir = [](
+        epiworld::Agent<TSeq> * p,
+        epiworld::Model<TSeq> * m
+    ) -> void {
+        // Does the agent recover?
+        if (m->runif() < (*m->p2))
+            p->rm_virus(0);
+
+        return;    
+    };
+
+};
+
+
+template<typename TSeq>
+inline ModelSEIR<TSeq>::ModelSEIR(
+    ModelSEIR<TSeq> & model,
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double incubation_days,
+    epiworld_double recovery
+    )
+{
+
+    // Adding statuses
+    model.add_status("Susceptible", epiworld::default_update_susceptible<TSeq>);
+    model.add_status("Exposed", model.update_exposed_seir);
+    model.add_status("Infected", model.update_infected_seir);
+    model.add_status("Removed");
+
+    // Setting up parameters
+    model.add_param(infectiousness, "Infectiousness");
+    model.add_param(incubation_days, "Incubation days");
+    model.add_param(recovery, "Immune recovery");
+
+    // Preparing the virus -------------------------------------------
+    epiworld::Virus<TSeq> virus(vname);
+    virus.set_status(ModelSEIR<TSeq>::EXPOSED, ModelSEIR<TSeq>::REMOVED, ModelSEIR<TSeq>::REMOVED);
+
+    virus.set_prob_infecting(&model("Infectiousness"));
+    
+    // Adding the tool and the virus
+    model.add_virus(virus, prevalence);
+    
+    model.set_name("Susceptible-Exposed-Infected-Removed (SEIR)");
+
+    return;
+   
+}
+
+template<typename TSeq>
+inline ModelSEIR<TSeq>::ModelSEIR(
+    std::string vname,
+    epiworld_double prevalence,
+    epiworld_double infectiousness,
+    epiworld_double incubation_days,
+    epiworld_double recovery
+    )
+{
+
+    ModelSEIR<TSeq>(
+        *this,
+        vname,
+        prevalence,
+        infectiousness,
+        incubation_days,
+        recovery
+        );
+
+    return;
+
+}
+
+
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/seir.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/surveillance.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_SURVEILLANCE_HPP
+#define EPIWORLD_MODELS_SURVEILLANCE_HPP
+
+template<typename TSeq = EPI_DEFAULT_TSEQ>
+class ModelSURV : public epiworld::Model<TSeq> {
+
+private:
+    // Status
+    static const int SUSCEPTIBLE           = 0;
+    static const int LATENT                = 1;
+    static const int SYMPTOMATIC           = 2;
+    static const int SYMPTOMATIC_ISOLATED  = 3; // sampled and discovered
+    static const int ASYMPTOMATIC          = 4;
+    static const int ASYMPTOMATIC_ISOLATED = 5;
+    static const int RECOVERED             = 6;
+    static const int REMOVED               = 7;
+
+public:
+    ModelSURV() {};
+
+    ModelSURV(
+        ModelSURV<TSeq> & model,
+        std::string vname,
+        epiworld_fast_uint prevalence               = 50,
+        epiworld_double efficacy_vax          = 0.9,
+        epiworld_double latent_period         = 3u,
+        epiworld_double infect_period         = 6u,
+        epiworld_double prob_symptoms         = 0.6,
+        epiworld_double prop_vaccinated       = 0.25,
+        epiworld_double prop_vax_redux_transm = 0.5,
+        epiworld_double prop_vax_redux_infect = 0.5,
+        epiworld_double surveillance_prob     = 0.001,
+        epiworld_double prob_transmission     = 1.0,
+        epiworld_double prob_death            = 0.001,
+        epiworld_double prob_noreinfect       = 0.9
+    );
+
+    ModelSURV(
+        std::string vname,
+        epiworld_fast_uint prevalence               = 50,
+        epiworld_double efficacy_vax          = 0.9,
+        epiworld_double latent_period         = 3u,
+        epiworld_double infect_period         = 6u,
+        epiworld_double prob_symptoms         = 0.6,
+        epiworld_double prop_vaccinated       = 0.25,
+        epiworld_double prop_vax_redux_transm = 0.5,
+        epiworld_double prop_vax_redux_infect = 0.5,
+        epiworld_double surveillance_prob     = 0.001,
+        epiworld_double prob_transmission     = 1.0,
+        epiworld_double prob_death            = 0.001,
+        epiworld_double prob_noreinfect       = 0.9
+    );
+
+};
+
+/**
+ * @brief Template for a Susceptible-Infected-Removed (SIR) model
+ * 
+ * @param model A Model<TSeq> object where to set up the SIR.
+ * @param vname std::string Name of the virus
+ * @param initial_prevalence epiworld_double Initial prevalence
+ * @param initial_susceptibility_reduction epiworld_double Initial susceptibility_reduction of the immune system
+ * @param initial_recovery epiworld_double Initial recovery rate of the immune system
+ */
+template<typename TSeq>
+inline ModelSURV<TSeq>::ModelSURV(
+    ModelSURV<TSeq> & model,
+    std::string vname,
+    epiworld_fast_uint prevalence,
+    epiworld_double efficacy_vax,
+    epiworld_double latent_period,
+    epiworld_double infect_period,
+    epiworld_double prob_symptoms,
+    epiworld_double prop_vaccinated,
+    epiworld_double prop_vax_redux_transm,
+    epiworld_double prop_vax_redux_infect,
+    epiworld_double surveillance_prob,
+    epiworld_double prob_transmission,
+    epiworld_double prob_death,
+    epiworld_double prob_noreinfect
+    )
+{
+
+    EPI_NEW_UPDATEFUN_LAMBDA(surveillance_update_susceptible, TSeq) {
+
+        // This computes the prob of getting any neighbor variant
+        epiworld_fast_uint nvariants_tmp = 0u;
+        for (auto & neighbor: p->get_neighbors()) 
+        {
+                    
+            for (size_t i = 0u; i < neighbor->get_n_viruses(); ++i) 
+            { 
+
+                auto & v = neighbor->get_virus(i);
+                    
+                /* And it is a function of susceptibility_reduction as well */ 
+                epiworld_double tmp_transmission = 
+                    (1.0 - p->get_susceptibility_reduction(v)) * 
+                    v->get_prob_infecting() * 
+                    (1.0 - neighbor->get_transmission_reduction(v)) 
+                    ; 
+            
+                m->array_double_tmp[nvariants_tmp]  = tmp_transmission;
+                m->array_virus_tmp[nvariants_tmp++] = &(*v);
+                
+            } 
+        }
+
+        // No virus to compute on
+        if (nvariants_tmp == 0)
+            return;
+
+        // Running the roulette
+        int which = roulette(nvariants_tmp, m);
+
+        if (which < 0)
+            return;
+
+        p->add_virus(*m->array_virus_tmp[which]); 
+        return;
+
+    };
+
+
+    epiworld::UpdateFun<TSeq> surveillance_update_exposed = 
+    [](epiworld::Agent<TSeq> * p, epiworld::Model<TSeq> * m) -> void
+    {
+
+        epiworld::VirusPtr<TSeq> & v = p->get_virus(0u); 
+        epiworld_double p_die = v->get_prob_death() * (1.0 - p->get_death_reduction(v)); 
+        
+        epiworld_fast_uint days_since_exposed = m->today() - v->get_date();
+        epiworld_fast_uint status = p->get_status();
+
+        // Figuring out latent period
+        if (v->get_data().size() == 0u)
+        {
+            epiworld_double latent_days = m->rgamma(MPAR(0), 1.0);
+            v->get_data().push_back(latent_days);
+
+            v->get_data().push_back(
+                m->rgamma(MPAR(1), 1.0) + latent_days
+            );
+        }
+        
+        // If still latent, nothing happens
+        if (days_since_exposed <= v->get_data()[0u])
+            return;
+
+        // If past days infected + latent, then bye.
+        if (days_since_exposed >= v->get_data()[1u])
+        {
+            p->rm_virus(0);
+            return;
+        }
+
+        // If it is infected, then it can be asymptomatic or symptomatic
+        if (status == ModelSURV<TSeq>::LATENT)
+        {
+
+            // Will be symptomatic?
+            if (EPI_RUNIF() < MPAR(2))
+                p->change_status(ModelSURV<TSeq>::SYMPTOMATIC);
+            else
+                p->change_status(ModelSURV<TSeq>::ASYMPTOMATIC);
+            
+            return;
+
+        }
+        
+        // Otherwise, it can be removed
+        if (EPI_RUNIF() < p_die)
+        {
+            p->change_status(ModelSURV<TSeq>::REMOVED, -1);
+            return;
+        }
+        
+        return;
+
+    };
+
+    std::vector< epiworld_fast_uint > exposed_status = {
+        SYMPTOMATIC,
+        SYMPTOMATIC_ISOLATED,
+        ASYMPTOMATIC,
+        ASYMPTOMATIC_ISOLATED,
+        LATENT
+    };
+
+    epiworld::GlobalFun<TSeq> surveillance_program = 
+    [exposed_status](
+        epiworld::Model<TSeq>* m
+        ) -> void
+    {
+
+        // How many will we find
+        std::binomial_distribution<> bdist(m->size(), m->par("Surveilance prob."));
+        int nsampled = bdist(*m->get_rand_endgine());
+
+        int to_go = nsampled + 1;
+
+        epiworld_double ndetected        = 0.0;
+        epiworld_double ndetected_asympt = 0.0;
+        
+        auto & pop = *(m->get_agents());
+        std::vector< bool > sampled(m->size(), false);
+        
+        while (to_go-- > 0)
+        {
+
+            // Who is the lucky one
+            epiworld_fast_uint i = static_cast<epiworld_fast_uint>(std::floor(EPI_RUNIF() * m->size()));
+
+            if (sampled[i])
+                continue;
+
+            sampled[i] = true;
+            epiworld::Agent<TSeq> * p = &pop[i];
+            
+            // If still exposed for the next term
+            if (epiworld::IN(p->get_status(), exposed_status ))
+            {
+
+                ndetected += 1.0;
+                if (p->get_status() == ModelSURV<TSeq>::ASYMPTOMATIC)
+                {
+                    ndetected_asympt += 1.0;
+                    p->change_status(ModelSURV<TSeq>::ASYMPTOMATIC_ISOLATED);
+                }
+                else 
+                {
+                    p->change_status(ModelSURV<TSeq>::SYMPTOMATIC_ISOLATED);
+                }
+
+                
+
+            }
+
+        }
+
+        // Writing the user data
+        std::vector< int > totals;
+        m->get_db().get_today_total(nullptr,&totals);
+        m->add_user_data(
+            {
+                static_cast<epiworld_double>(nsampled),
+                ndetected,
+                ndetected_asympt,
+                static_cast<epiworld_double>(totals[ModelSURV<TSeq>::ASYMPTOMATIC])
+            }
+            );
+
+
+    };
+
+    model.add_status("Susceptible", surveillance_update_susceptible);
+    model.add_status("Latent", surveillance_update_exposed);
+    model.add_status("Symptomatic", surveillance_update_exposed);
+    model.add_status("Symptomatic isolated", surveillance_update_exposed);
+    model.add_status("Asymptomatic", surveillance_update_exposed);
+    model.add_status("Asymptomatic isolated", surveillance_update_exposed);
+    model.add_status("Recovered");
+    model.add_status("Removed");
+
+    // General model parameters
+    model.add_param(latent_period, "Latent period");
+    model.add_param(infect_period, "Infect period");
+    model.add_param(prob_symptoms, "Prob of symptoms");
+    model.add_param(surveillance_prob, "Surveilance prob.");
+    model.add_param(efficacy_vax, "Vax efficacy");
+    model.add_param(prop_vax_redux_transm, "Vax redux transmission");
+    model.add_param(prob_transmission, "Prob of transmission");
+    model.add_param(prob_death, "Prob. death");
+    model.add_param(prob_noreinfect, "Prob. no reinfect");
+
+    // Virus ------------------------------------------------------------------
+    epiworld::Virus<TSeq> covid("Covid19");
+    covid.set_status(LATENT, RECOVERED, REMOVED);
+    covid.set_post_immunity(&model("Prob. no reinfect"));
+    covid.set_prob_death(&model("Prob. death"));
+
+    epiworld::VirusFun<TSeq> ptransmitfun = [](
+        epiworld::Agent<TSeq> * p,
+        epiworld::Virus<TSeq> & v,
+        epiworld::Model<TSeq> * m
+        ) -> epiworld_double
+    {
+        // No chance of infecting
+        epiworld_fast_uint  s = p->get_status();
+        if (s == ModelSURV<TSeq>::LATENT)
+            return static_cast<epiworld_double>(0.0);
+        else if (s == ModelSURV<TSeq>::SYMPTOMATIC_ISOLATED)
+            return static_cast<epiworld_double>(0.0);
+        else if (s == ModelSURV<TSeq>::ASYMPTOMATIC_ISOLATED)
+            return static_cast<epiworld_double>(0.0);
+
+        // Otherwise
+        return MPAR(6);
+    };
+
+    covid.set_prob_infecting_fun(ptransmitfun);
+    
+    model.add_virus_n(covid, prevalence);
+
+    model.set_user_data({"nsampled", "ndetected", "ndetected_asympt", "nasymptomatic"});
+    model.add_global_action(surveillance_program,-1);
+   
+    // Vaccine tool -----------------------------------------------------------
+    epiworld::Tool<TSeq> vax("Vaccine");
+    vax.set_susceptibility_reduction(&model("Vax efficacy"));
+    vax.set_transmission_reduction(&model("Vax redux transmission"));
+    
+    model.add_tool(vax, prop_vaccinated);
+
+    model.set_name("Surveillance");
+
+    return;
+
+}
+
+template<typename TSeq>
+inline ModelSURV<TSeq>::ModelSURV(
+    std::string vname,
+    epiworld_fast_uint prevalence,
+    epiworld_double efficacy_vax,
+    epiworld_double latent_period,
+    epiworld_double infect_period,
+    epiworld_double prob_symptoms,
+    epiworld_double prop_vaccinated,
+    epiworld_double prop_vax_redux_transm,
+    epiworld_double prop_vax_redux_infect,
+    epiworld_double surveillance_prob,
+    epiworld_double prob_transmission,
+    epiworld_double prob_death,
+    epiworld_double prob_noreinfect
+    )
+{
+
+    ModelSURV(
+        *this,
+        vname,
+        prevalence,
+        efficacy_vax,
+        latent_period,
+        infect_period,
+        prob_symptoms,
+        prop_vaccinated,
+        prop_vax_redux_transm,
+        prop_vax_redux_infect,
+        surveillance_prob,
+        prob_transmission,
+        prob_death,
+        prob_noreinfect
+    );
+
+    return;
+
+}
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/surveillance.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/sirconnected.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_SIRCONNECTED_HPP 
+#define EPIWORLD_MODELS_SIRCONNECTED_HPP
+
+template<typename TSeq = EPI_DEFAULT_TSEQ>
+class ModelSIRCONN : public epiworld::Model<TSeq>
+{
+private:
+    static const int SUSCEPTIBLE = 0;
+    static const int INFECTED    = 1;
+    static const int RECOVERED   = 2;
+
+public:
+
+    ModelSIRCONN() {
+        
+        tracked_agents_infected.reserve(1e4);
+        tracked_agents_infected_next.reserve(1e4);
+
+    };
+
+    ModelSIRCONN(
+        ModelSIRCONN<TSeq> & model,
+        std::string vname,
+        epiworld_fast_uint n,
+        epiworld_double prevalence,
+        epiworld_double reproductive_number,
+        epiworld_double prob_transmission,
+        epiworld_double prob_recovery
+    );
+
+    ModelSIRCONN(
+        std::string vname,
+        epiworld_fast_uint n,
+        epiworld_double prevalence,
+        epiworld_double reproductive_number,
+        epiworld_double prob_transmission,
+        epiworld_double prob_recovery
+    );
+
+    // Tracking who is infected and who is not
+    std::vector< epiworld::Agent<TSeq>* > tracked_agents_infected = {};
+    std::vector< epiworld::Agent<TSeq>* > tracked_agents_infected_next = {};
+
+    bool tracked_started = false;
+    int tracked_ninfected = 0;
+    int tracked_ninfected_next = 0;
+    epiworld_double tracked_current_infect_prob = 0.0;
+
+};
+
+
+/**
+ * @brief Template for a Susceptible-Infected-Removed (SIR) model
+ * 
+ * @param model A Model<TSeq> object where to set up the SIR.
+ * @param vname std::string Name of the virus
+ * @param prevalence Initial prevalence (proportion)
+ * @param reproductive_number Reproductive number (beta)
+ * @param prob_transmission Probability of transmission
+ * @param prob_recovery Probability of recovery
+ */
+template<typename TSeq>
+inline ModelSIRCONN<TSeq>::ModelSIRCONN(
+    ModelSIRCONN<TSeq> & model,
+    std::string vname,
+    epiworld_fast_uint n,
+    epiworld_double prevalence,
+    epiworld_double reproductive_number,
+    epiworld_double prob_transmission,
+    epiworld_double prob_recovery
+    // epiworld_double prob_reinfection
+    )
+{
+
+    auto * _tracked_started = &model.tracked_started;
+    auto * _tracked_ninfected = &model.tracked_ninfected;
+    auto * _tracked_ninfected_next = &model.tracked_ninfected_next;
+    auto * _tracked_current_infect_prob = &model.tracked_current_infect_prob;
+    auto * _tracked_agents_infected = &model.tracked_agents_infected;
+    auto * _tracked_agents_infected_next = &model.tracked_agents_infected_next;
+
+    std::function<void(epiworld::Model<TSeq> * m)> tracked_agents_check_init = [
+            _tracked_started,
+            _tracked_agents_infected,
+            _tracked_ninfected,
+            _tracked_current_infect_prob
+        ](epiworld::Model<TSeq> * m) -> void
+        {
+
+            if (*_tracked_started)
+                return;
+
+            /* Checking first if it hasn't  */ 
+            if (!*_tracked_started) 
+            { 
+                
+                /* Listing who is infected */ 
+                for (auto & p : *(m->get_agents()))
+                {
+                    if (p.get_status() == ModelSIRCONN<TSeq>::INFECTED)
+                    {
+                    
+                        _tracked_agents_infected->push_back(&p);
+                        *_tracked_ninfected = *_tracked_ninfected + 1;
+                    
+                    }
+                }
+
+                for (auto & p: *_tracked_agents_infected)
+                {
+                    if (p->get_n_viruses() == 0)
+                        throw std::logic_error("Cannot be infected and have no viruses.");
+                }
+                
+                *_tracked_started = true;
+
+                // Computing infection probability
+                *_tracked_current_infect_prob =  1.0 - std::pow(
+                    1.0 - (*m->p0) * (*m->p1) / m->size(),
+                    *_tracked_ninfected
+                );
+                
+            }
+
+        };
+
+    epiworld::UpdateFun<TSeq> update_susceptible = 
+        [
+            tracked_agents_check_init,
+            _tracked_ninfected,
+            _tracked_current_infect_prob,
+            _tracked_agents_infected_next,
+            _tracked_ninfected_next,
+            _tracked_agents_infected
+        ](
+        epiworld::Agent<TSeq> * p, epiworld::Model<TSeq> * m
+        ) -> void
+        {
+
+            tracked_agents_check_init(m);
+
+            // No infected individual?
+            if (*_tracked_ninfected == 0)
+                return;
+
+            if (m->runif() < *_tracked_current_infect_prob)
+            {
+
+                // Adding the individual to the queue
+                _tracked_agents_infected_next->push_back(p);
+                *_tracked_ninfected_next = *_tracked_ninfected_next + 1;
+
+                // Now selecting who is transmitting the disease
+                epiworld_fast_uint which = static_cast<epiworld_fast_uint>(
+                    std::floor(*_tracked_ninfected * m->runif())
+                );
+
+                // Infecting the individual
+                p->add_virus(
+                    _tracked_agents_infected->operator[](which)->get_virus(0u)
+                    ); 
+
+                return;
+
+            }
+
+            return;
+
+        };
+
+    epiworld::UpdateFun<TSeq> update_infected = 
+        [
+            tracked_agents_check_init,
+            _tracked_ninfected_next,
+            _tracked_agents_infected_next
+        ](
+        epiworld::Agent<TSeq> * p, epiworld::Model<TSeq> * m
+        ) -> void
+        {
+
+            tracked_agents_check_init(m);
+
+            // Is recovering
+            if (m->runif() < (*m->p2))
+            {
+
+                *_tracked_ninfected_next -= 1;
+                epiworld::VirusPtr<int> v = p->get_virus(0u);
+                p->rm_virus(0);
+                return;
+
+            }
+
+            // Will be present next
+            _tracked_agents_infected_next->push_back(p);
+
+            return;
+
+        };
+
+    epiworld::GlobalFun<TSeq> global_accounting = 
+        [
+            _tracked_started,
+            _tracked_agents_infected,
+            _tracked_agents_infected_next,
+            _tracked_ninfected,
+            _tracked_ninfected_next,
+            _tracked_current_infect_prob
+        ](epiworld::Model<TSeq> * m) -> void
+        {
+
+            // On the last day, also reset tracked agents and
+            // set the initialized value to false
+            if (static_cast<epiworld_fast_uint>(m->today()) == (m->get_ndays() - 1))
+            {
+
+                *_tracked_started = false;
+                _tracked_agents_infected->clear();
+                _tracked_agents_infected_next->clear();
+                *_tracked_ninfected = 0;
+                *_tracked_ninfected_next = 0;    
+                *_tracked_current_infect_prob = 0.0;
+
+                return;
+            }
+
+            std::swap(*_tracked_agents_infected, *_tracked_agents_infected_next);
+            _tracked_agents_infected_next->clear();
+
+            *_tracked_ninfected += *_tracked_ninfected_next;
+            *_tracked_ninfected_next = 0;
+
+            *_tracked_current_infect_prob = 1.0 - std::pow(
+                1.0 - (*m->p0) * (*m->p1) / m->size(),
+                *_tracked_ninfected
+                );
+
+        };
+
+    // Status
+    model.add_status("Susceptible", update_susceptible);
+    model.add_status("Infected", update_infected);
+    model.add_status("Recovered");
+
+    // Setting up parameters
+    model.add_param(reproductive_number, "Beta");
+    model.add_param(prob_transmission, "Prob. Transmission");
+    model.add_param(prob_recovery, "Prob. Recovery");
+    // model.add_param(prob_reinfection, "Prob. Reinfection");
+    
+    // Preparing the virus -------------------------------------------
+    epiworld::Virus<TSeq> virus(vname);
+    virus.set_status(1, 2, 2);
+
+    model.add_virus(virus, prevalence);
+
+    // Adding updating function
+    model.add_global_action(global_accounting, -1);
+
+    model.queuing_off(); // No queuing need
+
+    model.agents_empty_graph(n);
+
+    model.set_name("Susceptible-Infected-Removed (SIR) (connected)");
+
+    return;
+
+}
+
+template<typename TSeq>
+inline ModelSIRCONN<TSeq>::ModelSIRCONN(
+    std::string vname,
+    epiworld_fast_uint n,
+    epiworld_double prevalence,
+    epiworld_double reproductive_number,
+    epiworld_double prob_transmission,
+    epiworld_double prob_recovery
+    )
+{
+
+    ModelSIRCONN(
+        *this,
+        vname,
+        n,
+        prevalence,
+        reproductive_number,
+        prob_transmission,
+        prob_recovery
+    );
+
+    return;
+
+}
+
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/sirconnected.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ Start of -include/epiworld//models/seirconnected.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+#ifndef EPIWORLD_MODELS_SEIRCONNECTED_HPP
+#define EPIWORLD_MODELS_SEIRCONNECTED_HPP
+
+template<typename TSeq = EPI_DEFAULT_TSEQ>
+class ModelSEIRCONN : public epiworld::Model<TSeq> 
+{
+private:
+    static const int SUSCEPTIBLE = 0;
+    static const int EXPOSED     = 1;
+    static const int INFECTED    = 2;
+    static const int RECOVERE    = 3;
+
+public:
+
+    ModelSEIRCONN() {
+
+        tracked_agents_infected.reserve(1e4);
+        tracked_agents_infected_next.reserve(1e4);
+        
+    };
+
+    ModelSEIRCONN(
+        ModelSEIRCONN<TSeq> & model,
+        std::string vname,
+        epiworld_fast_uint n,
+        epiworld_double prevalence,
+        epiworld_double reproductive_number,
+        epiworld_double prob_transmission,
+        epiworld_double incubation_days,
+        epiworld_double prob_recovery
+    );
+    
+    ModelSEIRCONN(
+        std::string vname,
+        epiworld_fast_uint n,
+        epiworld_double prevalence,
+        epiworld_double reproductive_number,
+        epiworld_double prob_transmission,
+        epiworld_double incubation_days,
+        epiworld_double prob_recovery
+    );
+
+    // Tracking who is infected and who is not
+    std::vector< epiworld::Agent<>* > tracked_agents_infected = {};
+    std::vector< epiworld::Agent<>* > tracked_agents_infected_next = {};
+
+    bool tracked_started = false;
+    int tracked_ninfected = 0;
+    int tracked_ninfected_next = 0;
+
+};
+
+/**
+ * @brief Template for a Susceptible-Exposed-Infected-Removed (SEIR) model
+ * 
+ * @param model A Model<TSeq> object where to set up the SIR.
+ * @param vname std::string Name of the virus
+ * @param prevalence Initial prevalence (proportion)
+ * @param reproductive_number Reproductive number (beta)
+ * @param prob_transmission Probability of transmission
+ * @param prob_recovery Probability of recovery
+ */
+template<typename TSeq>
+inline ModelSEIRCONN<TSeq>::ModelSEIRCONN(
+    ModelSEIRCONN<TSeq> & model,
+    std::string vname,
+    epiworld_fast_uint n,
+    epiworld_double prevalence,
+    epiworld_double reproductive_number,
+    epiworld_double prob_transmission,
+    epiworld_double incubation_days,
+    epiworld_double prob_recovery
+    // epiworld_double prob_reinfection
+    )
+{
+
+    auto * _tracked_agents_infected = &model.tracked_agents_infected;
+    auto * _tracked_agents_infected_next = &model.tracked_agents_infected_next;
+    auto * _tracked_started = &model.tracked_started;
+    auto * _tracked_ninfected = &model.tracked_ninfected;
+    auto * _tracked_ninfected_next = &model.tracked_ninfected_next;
+
+    std::function<void(epiworld::Model<TSeq> *)> tracked_agents_check_init = 
+    [
+        _tracked_started,
+        _tracked_agents_infected,
+        _tracked_ninfected
+    ](epiworld::Model<TSeq> * m) 
+        {
+
+            if (*_tracked_started)
+                return;
+
+            /* Checking first if it hasn't  */ 
+            if (!*_tracked_started) 
+            { 
+                
+                /* Listing who is infected */ 
+                for (auto & p : *(m->get_agents()))
+                {
+                    if (p.get_status() == ModelSEIRCONN<TSeq>::INFECTED)
+                    {
+                    
+                        _tracked_agents_infected->push_back(&p);
+                        *_tracked_ninfected += 1;
+                    
+                    }
+                }
+
+                for (auto & p: *_tracked_agents_infected)
+                {
+                    if (p->get_n_viruses() == 0)
+                        throw std::logic_error("Cannot be infected and have no viruses.");
+                }
+                
+                *_tracked_started = true;
+                
+            }
+
+        };
+
+    epiworld::UpdateFun<TSeq> update_susceptible = 
+    [
+        tracked_agents_check_init,
+        _tracked_ninfected,
+        _tracked_agents_infected
+    ](epiworld::Agent<TSeq> * p, epiworld::Model<TSeq> * m) -> void
+        {
+
+            tracked_agents_check_init(m);
+
+            // No infected individual?
+            if (*_tracked_ninfected == 0)
+                return;
+
+            // Computing probability of contagion
+            // P(infected) = 1 - (1 - beta/Pop * ptransmit) ^ ninfected
+            epiworld_double prob_infect = 1.0 - std::pow(
+                1.0 - (*m->p0) * (*m->p1) / m->size(),
+                *_tracked_ninfected
+                );
+
+            if (m->runif() < prob_infect)
+            {
+
+                // Now selecting who is transmitting the disease
+                epiworld_fast_uint which = static_cast<epiworld_fast_uint>(
+                    std::floor(*_tracked_ninfected * m->runif())
+                );
+
+                // Infecting the individual
+                #ifdef EPI_DEBUG
+                if (_tracked_agents_infected->operator[](which)->get_n_viruses() == 0)
+                {
+
+                    printf_epiworld("[epiworld-debug] date: %i\n", m->today());
+                    printf_epiworld("[epiworld-debug] sim#: %i\n", m->get_n_replicates());
+
+                    throw std::logic_error(
+                        "[epiworld-debug] The agent " + std::to_string(which) + " has no "+
+                        "virus to share. The agent's status is: " +
+                        std::to_string(_tracked_agents_infected->operator[](which)->get_status())
+                    );
+                }
+                #endif
+                p->add_virus(
+                    _tracked_agents_infected->operator[](which)->get_virus(0u),
+                    ModelSEIRCONN<TSeq>::EXPOSED
+                    ); 
+
+                return;
+
+            }
+
+            return;
+
+        };
+
+    epiworld::UpdateFun<TSeq> update_infected = 
+    [
+        tracked_agents_check_init,
+        _tracked_agents_infected_next,
+        _tracked_ninfected_next
+
+    ](epiworld::Agent<TSeq> * p, epiworld::Model<TSeq> * m) -> void
+        {
+
+            tracked_agents_check_init(m);
+            auto status = p->get_status();
+
+            if (status == ModelSEIRCONN<TSeq>::EXPOSED)
+            {
+
+                // Does the agent become infected?
+                if (m->runif() < 1.0/(*m->p3))
+                {
+                    // Adding the individual to the queue
+                    _tracked_agents_infected_next->push_back(p);
+                    *_tracked_ninfected_next += 1;
+
+                    p->change_status(ModelSEIRCONN<TSeq>::INFECTED);
+
+                    return;
+
+                }
+
+
+            } else if (status == ModelSEIRCONN<TSeq>::INFECTED)
+            {
+
+                if (m->runif() < (*m->p2))
+                {
+
+                    *_tracked_ninfected_next -= 1;
+                    p->rm_virus(0);
+                    return;
+
+                }
+
+                _tracked_agents_infected_next->push_back(p);
+
+            } 
+
+            return;
+
+        };
+
+    epiworld::GlobalFun<TSeq> global_accounting = 
+    [
+        _tracked_started,
+        _tracked_agents_infected,
+        _tracked_agents_infected_next,
+        _tracked_ninfected,
+        _tracked_ninfected_next
+    ](epiworld::Model<TSeq>* m) -> void
+        {
+
+            // On the last day, also reset tracked agents and
+            // set the initialized value to false
+            if (static_cast<epiworld_fast_uint>(m->today()) == (m->get_ndays() - 1))
+            {
+
+                *_tracked_started = false;
+                _tracked_agents_infected->clear();
+                _tracked_agents_infected_next->clear();
+                *_tracked_ninfected = 0;
+                *_tracked_ninfected_next = 0;    
+
+                return;
+            }
+
+            std::swap(*_tracked_agents_infected, *_tracked_agents_infected_next);
+            _tracked_agents_infected_next->clear();
+
+            *_tracked_ninfected += *_tracked_ninfected_next;
+            *_tracked_ninfected_next = 0;
+
+        };
+
+    // Setting up parameters
+    model.add_param(reproductive_number, "Beta");
+    model.add_param(prob_transmission, "Prob. Transmission");
+    model.add_param(prob_recovery, "Prob. Recovery");
+    model.add_param(incubation_days, "Avg. Incubation days");
+    
+    // Status
+    model.add_status("Susceptible", update_susceptible);
+    model.add_status("Exposed", update_infected);
+    model.add_status("Infected", update_infected);
+    model.add_status("Recovered");
+
+
+    // Preparing the virus -------------------------------------------
+    epiworld::Virus<TSeq> virus(vname);
+    virus.set_status(1,3,3);
+    model.add_virus(virus, prevalence);
+
+    // Adding updating function
+    model.add_global_action(global_accounting, -1);
+
+    model.queuing_off(); // No queuing need
+
+    // Adding the empty population
+    model.agents_empty_graph(n);
+
+    model.set_name("Susceptible-Exposed-Infected-Removed (SEIR) (connected)");
+
+    return;
+
+}
+
+template<typename TSeq>
+inline ModelSEIRCONN<TSeq>::ModelSEIRCONN(
+    std::string vname,
+    epiworld_fast_uint n,
+    epiworld_double prevalence,
+    epiworld_double reproductive_number,
+    epiworld_double prob_transmission,
+    epiworld_double incubation_days,
+    epiworld_double prob_recovery
+    )
+{
+
+    ModelSEIRCONN(
+        *this,
+        vname,
+        n,
+        prevalence,
+        reproductive_number,
+        prob_transmission,
+        incubation_days,
+        prob_recovery
+    );
+
+    return;
+
+}
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld//models/seirconnected.hpp-
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////*/
+
+
+}
+
+#endif
+/*//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+ End of -include/epiworld/models/models.hpp-
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////*/

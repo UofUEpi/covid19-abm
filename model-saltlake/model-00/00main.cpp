@@ -263,7 +263,7 @@ int main()
     // "results/", with each replicate named "0000_total_hist.csv"
     model.run_multiple(
         nreplicates, 
-        save_run<>("results/%04lu",
+        make_save_run<>("results/%04lu",
             true,  // History
             false,
             false,
@@ -281,3 +281,4 @@ int main()
     return 0;
 
 }
+
