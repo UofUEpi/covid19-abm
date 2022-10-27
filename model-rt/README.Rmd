@@ -7,22 +7,36 @@ library(data.table)
 library(ggplot2)
 ```
 
+# Running the model
+
+```{bash}
+./main.o
+```
+
 # Computing reproductive number
 
 ```{r repnum}
-rt <- fread("repnumber.txt")
-rt <- rt[, .(rt = mean(rt)), by = "source_exposure_date"]
+rt <- list.files("saves", pattern = "reproductive", full.names = TRUE)
+rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
+    rbindlist()
+
+rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
 setorder(rt, source_exposure_date)
 
-plot(rt)
+
+ggplot(rt, aes(x = source_exposure_date, y = rt)) +
+    geom_smooth()
 ```
 
 # Epi curves
 
 ```{r}
-epicurves <- fread("total_hist.txt")
+epicurves <- list.files("saves", pattern = "hist", full.names = TRUE)
+epicurves <- lapply(seq_along(epicurves), \(i) {
+    cbind(id = i, fread(epicurves[i]))
+}) |> rbindlist()
 
 ggplot(epicurves, aes(x = date, y = counts)) +
-    geom_line(aes(colour = status))
-
+    geom_smooth(aes(colour = status))
 ```
+
