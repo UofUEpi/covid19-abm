@@ -9,10 +9,6 @@ library(ggplot2)
 
 # Running the model
 
-```{bash}
-./main.o
-```
-
 # Computing reproductive number
 
 ```{r repnum}
@@ -25,6 +21,7 @@ setorder(rt, source_exposure_date)
 
 
 ggplot(rt, aes(x = source_exposure_date, y = rt)) +
+    geom_jitter() +
     geom_smooth()
 ```
 
@@ -36,7 +33,12 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
     cbind(id = i, fread(epicurves[i]))
 }) |> rbindlist()
 
+# Proper names
+epicurves[, status := factor(
+    status, levels = c("Susceptible", "Exposed", "Infected", "Recovered", "Hospitalized", "Deseased"))]
+
 ggplot(epicurves, aes(x = date, y = counts)) +
-    geom_smooth(aes(colour = status))
+    geom_point(aes(colour = status))
+    # geom_smooth(aes(colour = status))
 ```
 
