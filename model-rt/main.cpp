@@ -180,7 +180,7 @@ int main(int argc, char* argv[]) {
     epiworld_fast_uint ndays       = 100;
     epiworld_fast_uint popsize     = 10000;
     epiworld_fast_uint preval      = 20;
-    epiworld_fast_uint nties       = 40;
+    epiworld_fast_uint nties       = 10;
 
     if (argc == 5)
     {
@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
     model.add_virus_n(covid19, preval);
     
     // Adding the population
-    model.agents_smallworld(popsize, nties, false, .01);
+    model.agents_smallworld(popsize, nties, false, .1);
     model.init(ndays, 2312);
 
     // Creating FMCMC model
@@ -231,7 +231,7 @@ int main(int argc, char* argv[]) {
     model.verbose_off();
 
     std::vector< epiworld_double > par0 = {.5, 5, .5, .5, .5};
-    lfmcmc.run(par0, 500, .25);
+    lfmcmc.run(par0, 1000, .25);
     
     lfmcmc.set_par_names(
         {"Prob. of Recovery",
