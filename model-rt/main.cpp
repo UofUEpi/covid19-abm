@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
     epiworld_fast_uint ndays       = 100;
     epiworld_fast_uint popsize     = 10000;
     epiworld_fast_uint preval      = 20;
-    epiworld_fast_uint nties       = 30;
+    epiworld_fast_uint nties       = 100;
 
     if (argc == 5)
     {
@@ -107,8 +107,8 @@ int main(int argc, char* argv[]) {
 
     model.add_param(1.0/7.0, "Incubation period");
     model.add_param(.1, "Hospitalization prob.");
-    model.add_param(.3, "Death prob.");
-    model.add_param(.9, "Infectiousness");
+    model.add_param(.1, "Death prob.");
+    model.add_param(.02, "Infectiousness"); 
     model.add_param(1.0/7.0, "Prob. of Recovery");
 
     // Creating the virus
@@ -126,24 +126,19 @@ int main(int argc, char* argv[]) {
     
     // Adding multi-file write
     auto sav = epiworld::make_save_run<int>(
-        "saves/main_out_%04l", // std::string fmt,
+        "saves/main_out_%04li", // std::string fmt,
         true,  // bool total_hist,
         false, // bool variant_info,
         false, // bool variant_hist,
         false, // bool tool_info,
         false, // bool tool_hist,
-        false, // bool transmission,
+        true , // bool transmission,
         false, // bool transition,
         true   // bool reproductive
     );
 
     model.run_multiple(100, sav);
     model.print();
-
-    // Getting the reproductive numbers
-    model.get_db().write_data(
-        "", "", "", "", "total_hist.txt", "", "", "repnumber.txt"
-    );
 
     return 0;
 }

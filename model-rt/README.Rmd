@@ -20,13 +20,14 @@ rt <- list.files("saves", pattern = "reproductive", full.names = TRUE)
 rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
     rbindlist()
 
+# Computing for each individual
 rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
 setorder(rt, source_exposure_date)
 
-
 ggplot(rt, aes(x = source_exposure_date, y = rt)) +
-    geom_jitter() +
-    scale_y_log10()
+    geom_jitter(alpha = .1) +
+    geom_smooth() +
+    lims(y = c(0, 5))
 ```
 
 # Epi curves
@@ -38,6 +39,7 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
 }) |> rbindlist()
 
 ggplot(epicurves, aes(x = date, y = counts)) +
-    geom_jitter(aes(colour = status))
+    geom_smooth(aes(colour = status)) +
+    geom_jitter(aes(colour = status), alpha = .1)
 ```
 
