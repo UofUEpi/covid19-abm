@@ -38,7 +38,8 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
     cbind(id = i, fread(epicurves[i]))
 }) |> rbindlist()
 
-ggplot(epicurves, aes(x = date, y = counts)) +
+epicurves[status %in% c("Exposed", "Infected", "Hospitalized")] |>
+    ggplot(aes(x = date, y = counts)) +
     geom_smooth(aes(colour = status)) +
     geom_jitter(aes(colour = status), alpha = .1)
 ```

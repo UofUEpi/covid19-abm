@@ -76,10 +76,11 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
 int main(int argc, char* argv[]) {
 
     // Getting the parameters --------------------------------------------------
-    epiworld_fast_uint ndays       = 100;
-    epiworld_fast_uint popsize     = 10000;
-    epiworld_fast_uint preval      = 20;
-    epiworld_fast_uint nties       = 100;
+    epiworld_fast_uint ndays       = 200;
+    epiworld_fast_uint popsize     = 50000;
+    epiworld_fast_uint preval      = 50;
+    epiworld_fast_uint nties       = 10;
+    epiworld_fast_uint nsims       = 20;
 
     if (argc == 5)
     {
@@ -108,7 +109,7 @@ int main(int argc, char* argv[]) {
     model.add_param(1.0/7.0, "Incubation period");
     model.add_param(.1, "Hospitalization prob.");
     model.add_param(.1, "Death prob.");
-    model.add_param(.02, "Infectiousness"); 
+    model.add_param(5.0/nties, "Infectiousness");  // About five individuals per contact
     model.add_param(1.0/7.0, "Prob. of Recovery");
 
     // Creating the virus
@@ -121,7 +122,11 @@ int main(int argc, char* argv[]) {
     model.add_virus_n(covid19, preval);
     
     // Adding the population
-    model.agents_smallworld(popsize, nties, false, .3);
+    // model.agents_smallworld(popsize, nties, false, .2);
+    model.agents_from_adjlist(
+        epiworld::rgraph_blocked(popsize, nties, 2, model)
+        );
+
     model.init(ndays, 2312);
     
     // Adding multi-file write
@@ -137,7 +142,7 @@ int main(int argc, char* argv[]) {
         true   // bool reproductive
     );
 
-    model.run_multiple(100, sav);
+    model.run_multiple(nsims, sav);
     model.print();
 
     return 0;
