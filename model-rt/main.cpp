@@ -32,6 +32,7 @@ EPI_NEW_UPDATEFUN(update_infected_rt, int)
         v->get_prob_recovery(),
         (*m->p1)
         };
+
     int which = epiworld::roulette(probs, m);
 
     if (which < 0)
@@ -72,15 +73,55 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
 
 }
 
+/**
+ * @brief Transmission by contact outside home
+ */
+EPI_NEW_GLOBALFUN(contact, int)
+{
+    for (auto & a : *(m->get_agents()))
+    {
+        // Will it get it from the entities?
+        if (a.get_status() == S::Susceptible)
+        {
+
+            AgentsSample<int> neighbors(a, 5, true);
+
+            int n_viruses = -1;
+            for (auto n : neighbors) {
+                if (n->get_status() == S::Infected)
+                    m->array_virus_tmp[++n_viruses] = &(*n->get_virus(0u));
+            }
+
+            // Nothing to see here
+            if (n_viruses == -1)
+                continue;
+
+            double p_infection = 1.0 - std::pow(1.0 - *m->p4, n_viruses);
+
+            if (m->runif() >= p_infection)
+                continue;
+
+            int which = std::floor(m->runif() * n_viruses);
+
+            a.add_virus(*(m->array_virus_tmp[which]), S::Exposed, QueueValues::OnlySelf); 
+
+        }
+
+
+    }
+}
+
+
 
 int main(int argc, char* argv[]) {
 
     // Getting the parameters --------------------------------------------------
-    epiworld_fast_uint ndays       = 200;
-    epiworld_fast_uint popsize     = 50000;
-    epiworld_fast_uint preval      = 50;
-    epiworld_fast_uint nties       = 10;
-    epiworld_fast_uint nsims       = 20;
+    epiworld_fast_uint ndays           = 200;
+    epiworld_fast_uint popsize         = 20000;
+    epiworld_fast_uint preval          = 50;
+    epiworld_fast_uint nties           = 5;
+    epiworld_fast_uint nsims           = 100;
+    epiworld_fast_uint entity_capacity = 100;
 
     if (argc == 5)
     {
@@ -109,7 +150,8 @@ int main(int argc, char* argv[]) {
     model.add_param(1.0/7.0, "Incubation period");
     model.add_param(.1, "Hospitalization prob.");
     model.add_param(.1, "Death prob.");
-    model.add_param(5.0/nties, "Infectiousness");  // About five individuals per contact
+    model.add_param(.5, "Infectiousness");  // About five individuals per contact
+    model.add_param(.25, "Infectiousness in entity");
     model.add_param(1.0/7.0, "Prob. of Recovery");
 
     // Creating the virus
@@ -124,10 +166,21 @@ int main(int argc, char* argv[]) {
     // Adding the population
     // model.agents_smallworld(popsize, nties, false, .2);
     model.agents_from_adjlist(
-        epiworld::rgraph_blocked(popsize, nties, 2, model)
+        epiworld::rgraph_blocked(popsize, nties, 1, model)
         );
 
     model.init(ndays, 2312);
+
+    // Adding randomly distributed entities, each one with capacity for entity_capacity
+    size_t n_entities = std::ceil(popsize/entity_capacity);
+    for (size_t r = 0u; r < n_entities; ++r)
+    {
+        Entity<int> e(std::string("Location ") + std::to_string(r));
+        model.add_entity_n(e, entity_capacity);
+    }
+
+    // This will act through the global
+    model.add_global_action(contact, -99);
     
     // Adding multi-file write
     auto sav = epiworld::make_save_run<int>(
