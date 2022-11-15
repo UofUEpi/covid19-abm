@@ -115,24 +115,6 @@ EPI_NEW_GLOBALFUN(contact, int)
 
 int main(int argc, char* argv[]) {
 
-    // Getting the parameters --------------------------------------------------
-    epiworld_fast_uint ndays           = 200;
-    epiworld_fast_uint popsize         = 20000;
-    epiworld_fast_uint preval          = 50;
-    epiworld_fast_uint nties           = 5;
-    epiworld_fast_uint nsims           = 100;
-    epiworld_fast_uint entity_capacity = 100;
-
-    if (argc == 5)
-    {
-        ndays    = strtol(argv[1], nullptr, 0);
-        popsize  = strtol(argv[2], nullptr, 0);
-        preval   = strtol(argv[3], nullptr, 0);
-        nties    = strtol(argv[4], nullptr, 0);
-    }
-    else if (argc != 1)
-        std::logic_error("Either no arguments or four (ndays, popsize, preval, and nties.)");
-
     // Setting up the model ----------------------------------------------------
     epiworld::Model<> model;
 
@@ -147,12 +129,8 @@ int main(int argc, char* argv[]) {
     model.add_status("Recovered");
     model.add_status("Deseased");
 
-    model.add_param(1.0/7.0, "Incubation period");
-    model.add_param(.1, "Hospitalization prob.");
-    model.add_param(.1, "Death prob.");
-    model.add_param(.5, "Infectiousness");  // About five individuals per contact
-    model.add_param(.25, "Infectiousness in entity");
-    model.add_param(1.0/7.0, "Prob. of Recovery");
+    // Reading the model parameters
+    model.read_params("params.txt");
 
     // Creating the virus
     epiworld::Virus<> covid19("Covid19");
@@ -161,22 +139,26 @@ int main(int argc, char* argv[]) {
     covid19.set_status(S::Exposed, S::Recovered);
     covid19.set_queue(epiworld::QueueValues::OnlySelf, -99LL);
 
-    model.add_virus_n(covid19, preval);
+    model.add_virus_n(covid19, model("Prevalence"));
     
     // Adding the population
-    // model.agents_smallworld(popsize, nties, false, .2);
     model.agents_from_adjlist(
-        epiworld::rgraph_blocked(popsize, nties, 1, model)
+        epiworld::rgraph_blocked(
+            model("Population Size"),
+            model("N ties"),
+            1,
+            model
+            )
         );
 
-    model.init(ndays, 2312);
+    model.init(model("Days"), model("Seed"));
 
     // Adding randomly distributed entities, each one with capacity for entity_capacity
-    size_t n_entities = std::ceil(popsize/entity_capacity);
+    size_t n_entities = std::ceil(model("Population Size")/model("Entity size"));
     for (size_t r = 0u; r < n_entities; ++r)
     {
         Entity<int> e(std::string("Location ") + std::to_string(r));
-        model.add_entity_n(e, entity_capacity);
+        model.add_entity_n(e, model("Entity size"));
     }
 
     // This will act through the global
@@ -195,7 +177,7 @@ int main(int argc, char* argv[]) {
         true   // bool reproductive
     );
 
-    model.run_multiple(nsims, sav);
+    model.run_multiple(model("Sim count"), sav);
     model.print();
 
     return 0;

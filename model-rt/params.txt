@@ -1,0 +1,16 @@
+* Transmission dynamics
+Incubation period        : 0.14
+Hospitalization prob.    : 0.1
+Death prob.              : 0.1
+Infectiousness           : 0.5
+Infectiousness in entity : 0.25
+Prob. of Recovery        : 0.14
+
+* Global parameters
+Days            : 100
+Population Size : 10000
+Prevalence      : 50
+N ties          : 5
+Sim count       : 100
+Entity size     : 100
+Seed            : 15454
