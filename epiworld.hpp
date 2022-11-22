@@ -6549,6 +6549,9 @@ inline void Model<TSeq>::load_agents_entities_ties(
 
     }
 
+    // Need to make the links effective
+    this->actions_run();
+
     return;
 
 }
