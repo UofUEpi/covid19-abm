@@ -11,7 +11,7 @@ enum S {
     Deseased
 };
 
-// Updating exposed
+// Update dynamics for exposed individuals
 EPI_NEW_UPDATEFUN(update_exposed_rt, int) 
 {
     if (m->runif() < *m->p0)
@@ -23,10 +23,11 @@ EPI_NEW_UPDATEFUN(update_exposed_rt, int)
     return;
 }
 
-// Updating infected
+// Update dynamics for infected individuals
 EPI_NEW_UPDATEFUN(update_infected_rt, int)
 {
 
+    // Computing probability of recovery
     auto v = p->get_virus(0u);
     auto probs = {
         v->get_prob_recovery(),
@@ -44,21 +45,26 @@ EPI_NEW_UPDATEFUN(update_infected_rt, int)
         return;
     }
 
+    // Individual goes hospitalized
     p->change_status(S::Hospitalized, -epiworld::QueueValues::Everyone);
     return;
 
 }
 
+// Update dynamics for hospitalized individuals
 EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
 {
 
+    // Computing the recovery probability
     auto v = p->get_virus(0u);
     auto probs = {
         v->get_prob_recovery(),
         (*m->p2)
         };
+
     int which = epiworld::roulette(probs, m);
 
+    // Nothing happens
      if (which < 0)
         return;
 
@@ -68,7 +74,9 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
         return;
     }
 
+    // Individual dies
     p->rm_virus(v, S::Deseased, epiworld::QueueValues::NoOne);
+
     return;
 
 }
@@ -84,26 +92,32 @@ EPI_NEW_GLOBALFUN(contact, int)
         if (a.get_status() == S::Susceptible)
         {
 
-            AgentsSample<int> neighbors(a, 5, true);
+            AgentsSample<int> neighbors(a, m->par("N interactions"), true);
 
-            int n_viruses = -1;
+            int n_viruses = 0;
             for (auto n : neighbors) {
                 if (n->get_status() == S::Infected)
-                    m->array_virus_tmp[++n_viruses] = &(*n->get_virus(0u));
+                    m->array_virus_tmp[n_viruses++] = &(*n->get_virus(0u));
             }
 
             // Nothing to see here
-            if (n_viruses == -1)
+            if (n_viruses == 0)
                 continue;
 
+            // Is the individual getting the infection?
             double p_infection = 1.0 - std::pow(1.0 - *m->p4, n_viruses);
 
             if (m->runif() >= p_infection)
                 continue;
 
+            // Who infects the individual?
             int which = std::floor(m->runif() * n_viruses);
 
-            a.add_virus(*(m->array_virus_tmp[which]), S::Exposed, QueueValues::OnlySelf); 
+            a.add_virus(
+                *(m->array_virus_tmp[which]), // Viruse.
+                S::Exposed,                   // New state.
+                QueueValues::OnlySelf         // Change on the queue.
+                ); 
 
         }
 
@@ -143,23 +157,23 @@ int main(int argc, char* argv[]) {
     
     // Adding the population
     model.agents_from_adjlist(
-        epiworld::rgraph_blocked(
-            model("Population Size"),
-            model("N ties"),
-            1,
-            model
-            )
+        "population.txt",         // Filepath
+        model("Population Size"), // Population size
+        0,                        // Lines to skip
+        false                     // Directed?
         );
-
+ 
     model.init(model("Days"), model("Seed"));
 
     // Adding randomly distributed entities, each one with capacity for entity_capacity
-    size_t n_entities = std::ceil(model("Population Size")/model("Entity size"));
-    for (size_t r = 0u; r < n_entities; ++r)
+    for (size_t r = 0u; r < model("N entities"); ++r)
     {
         Entity<int> e(std::string("Location ") + std::to_string(r));
-        model.add_entity_n(e, model("Entity size"));
+        model.add_entity_n(e, 0);
     }
+
+    // Loading the entities
+    model.load_agents_entities_ties("agents_entities.txt", 0);
 
     // This will act through the global
     model.add_global_action(contact, -99);

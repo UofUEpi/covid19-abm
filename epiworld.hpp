@@ -2948,20 +2948,25 @@ template<typename TSeq>
 inline void DataBase<TSeq>::record_variant(Virus<TSeq> & v)
 {
 
-    // Updating registry
-    std::vector< int > hash = seq_hasher(*v.get_sequence());
-    epiworld_fast_uint old_id = v.get_id();
-    epiworld_fast_uint new_id;
-    if (variant_id.find(hash) == variant_id.end())
+    // If no sequence, then need to add one. This is regardless of the case
+    if (v.get_sequence() == nullptr)
+        v.set_sequence(default_sequence<TSeq>());
+
+    // Negative id -> virus hasn't been recorded
+    if (v.get_id() < 0)
     {
 
-        new_id = variant_id.size();
+
+        // Generating the hash
+        std::vector< int > hash = seq_hasher(*v.get_sequence());
+
+        epiworld_fast_uint new_id = variant_id.size();
         variant_id[hash] = new_id;
         variant_name.push_back(v.get_name());
         variant_sequence.push_back(*v.get_sequence());
         variant_origin_date.push_back(model->today());
         
-        variant_parent_id.push_back(old_id);
+        variant_parent_id.push_back(v.get_id()); // Must be -99
         
         today_variant.push_back({});
         today_variant[new_id].resize(model->nstatus, 0);
@@ -2972,42 +2977,74 @@ inline void DataBase<TSeq>::record_variant(Virus<TSeq> & v)
 
         today_total_nvariants_active++;
 
-    } else {
+    } else { // In this case, the virus is already on record, need to make sure
+             // The new sequence is new.
 
-        // Finding the id
-        new_id = variant_id[hash];
+        // Updating registry
+        std::vector< int > hash = seq_hasher(*v.get_sequence());
+        epiworld_fast_uint old_id = v.get_id();
+        epiworld_fast_uint new_id;
 
-        // Reflecting the change
-        v.set_id(new_id);
-        v.set_date(variant_origin_date[new_id]);
+        // If the sequence is new, then it means that the
+        if (variant_id.find(hash) == variant_id.end())
+        {
 
-    }
+            new_id = variant_id.size();
+            variant_id[hash] = new_id;
+            variant_name.push_back(v.get_name());
+            variant_sequence.push_back(*v.get_sequence());
+            variant_origin_date.push_back(model->today());
+            
+            variant_parent_id.push_back(old_id);
+            
+            today_variant.push_back({});
+            today_variant[new_id].resize(model->nstatus, 0);
+        
+            // Updating the variant
+            v.set_id(new_id);
+            v.set_date(model->today());
 
-    // Moving statistics (only if we are affecting an individual)
-    if (v.get_agent() != nullptr)
-    {
-        // Correcting math
-        epiworld_fast_uint tmp_status = v.get_agent()->get_status();
-        today_variant[old_id][tmp_status]--;
-        today_variant[new_id][tmp_status]++;
+            today_total_nvariants_active++;
+
+        } else {
+
+            // Finding the id
+            new_id = variant_id[hash];
+
+            // Reflecting the change
+            v.set_id(new_id);
+            v.set_date(variant_origin_date[new_id]);
+
+        }
+
+        // Moving statistics (only if we are affecting an individual)
+        if (v.get_agent() != nullptr)
+        {
+            // Correcting math
+            epiworld_fast_uint tmp_status = v.get_agent()->get_status();
+            today_variant[old_id][tmp_status]--;
+            today_variant[new_id][tmp_status]++;
+
+        }
 
     }
     
     return;
+
 } 
 
 template<typename TSeq>
 inline void DataBase<TSeq>::record_tool(Tool<TSeq> & t)
 {
 
-    // Updating registry
-    std::vector< int > hash = seq_hasher(*t.get_sequence());
-    epiworld_fast_uint old_id = t.get_id();
-    epiworld_fast_uint new_id;
-    if (tool_id.find(hash) == tool_id.end())
+    if (t.get_sequence() == nullptr)
+        t.set_sequence(default_sequence<TSeq>());
+
+    if (t.get_id() < 0) 
     {
 
-        new_id = tool_id.size();
+        std::vector< int > hash = seq_hasher(*t.get_sequence());
+        epiworld_fast_uint new_id = tool_id.size();
         tool_id[hash] = new_id;
         tool_name.push_back(t.get_name());
         tool_sequence.push_back(*t.get_sequence());
@@ -3022,24 +3059,51 @@ inline void DataBase<TSeq>::record_tool(Tool<TSeq> & t)
 
     } else {
 
-        // Finding the id
-        new_id = tool_id[hash];
+        // Updating registry
+        std::vector< int > hash = seq_hasher(*t.get_sequence());
+        epiworld_fast_uint old_id = t.get_id();
+        epiworld_fast_uint new_id;
+        
+        if (tool_id.find(hash) == tool_id.end())
+        {
 
-        // Reflecting the change
-        t.set_id(new_id);
-        t.set_date(tool_origin_date[new_id]);
+            new_id = tool_id.size();
+            tool_id[hash] = new_id;
+            tool_name.push_back(t.get_name());
+            tool_sequence.push_back(*t.get_sequence());
+            tool_origin_date.push_back(model->today());
+                    
+            today_tool.push_back({});
+            today_tool[new_id].resize(model->nstatus, 0);
+
+            // Updating the tool
+            t.set_id(new_id);
+            t.set_date(model->today());
+
+        } else {
+
+            // Finding the id
+            new_id = tool_id[hash];
+
+            // Reflecting the change
+            t.set_id(new_id);
+            t.set_date(tool_origin_date[new_id]);
+
+        }
+
+        // Moving statistics (only if we are affecting an individual)
+        if (t.get_agent() != nullptr)
+        {
+            // Correcting math
+            epiworld_fast_uint tmp_status = t.get_agent()->get_status();
+            today_tool[old_id][tmp_status]--;
+            today_tool[new_id][tmp_status]++;
+
+        }
 
     }
 
-    // Moving statistics (only if we are affecting an individual)
-    if (t.get_agent() != nullptr)
-    {
-        // Correcting math
-        epiworld_fast_uint tmp_status = t.get_agent()->get_status();
-        today_tool[old_id][tmp_status]--;
-        today_tool[new_id][tmp_status]++;
-
-    }
+    
     
     return;
 } 
@@ -4958,6 +5022,8 @@ public:
     void add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> fun);
     ///@}
 
+    void load_agents_entities_ties(std::string fn, int skip);
+
     /**
      * @name Accessing population of the model
      * 
@@ -5583,7 +5649,7 @@ template<typename TSeq>
 inline epiworld_double susceptibility_reduction_mixer_default(
     Agent<TSeq>* p,
     VirusPtr<TSeq> v,
-    Model<TSeq> * m
+    Model<TSeq> *
 )
 {
     epiworld_double total = 1.0;
@@ -5598,7 +5664,7 @@ template<typename TSeq>
 inline epiworld_double transmission_reduction_mixer_default(
     Agent<TSeq>* p,
     VirusPtr<TSeq> v,
-    Model<TSeq>* m
+    Model<TSeq>*
 )
 {
     epiworld_double total = 1.0;
@@ -5613,7 +5679,7 @@ template<typename TSeq>
 inline epiworld_double recovery_enhancer_mixer_default(
     Agent<TSeq>* p,
     VirusPtr<TSeq> v,
-    Model<TSeq>* m
+    Model<TSeq>*
 )
 {
     epiworld_double total = 1.0;
@@ -5628,9 +5694,9 @@ template<typename TSeq>
 inline epiworld_double death_reduction_mixer_default(
     Agent<TSeq>* p,
     VirusPtr<TSeq> v,
-    Model<TSeq>* m
-)
-{
+    Model<TSeq>* /*m*/
+) {
+
     epiworld_double total = 1.0;
     for (auto & tool : p->get_tools())
     {
@@ -6275,10 +6341,10 @@ inline void Model<TSeq>::add_virus(Virus<TSeq> v, epiworld_double preval)
         throw std::logic_error(
             "The virus \"" + v.get_name() + "\" has no -post- status."
             );
-
-    // Setting the id
-    v.set_id(viruses.size());
     
+    // Recording the variant
+    db.record_variant(v);
+
     // Adding new virus
     viruses.push_back(std::make_shared< Virus<TSeq> >(v));
     prevalence_virus.push_back(preval);
@@ -6305,7 +6371,7 @@ inline void Model<TSeq>::add_virus_n(Virus<TSeq> v, epiworld_fast_uint preval)
             );
 
     // Setting the id
-    v.set_id(viruses.size());
+    db.record_variant(v);
 
     // Adding new virus
     viruses.push_back(std::make_shared< Virus<TSeq> >(v));
@@ -6423,6 +6489,67 @@ inline void Model<TSeq>::add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> f
     prevalence_entity.push_back(0.0);
     prevalence_entity_as_proportion.push_back(false);
     entities_dist_funs.push_back(fun);
+
+}
+
+template<typename TSeq>
+inline void Model<TSeq>::load_agents_entities_ties(
+    std::string fn,
+    int skip
+    )
+{
+
+    int i,j;
+    std::ifstream filei(fn);
+
+    if (!filei)
+        throw std::logic_error("The file " + fn + " was not found.");
+
+    int linenum = 0;
+    std::vector< epiworld_fast_uint > source_;
+    std::vector< epiworld_fast_uint > target_;
+
+    source_.reserve(1e5);
+    target_.reserve(1e5);
+
+    while (!filei.eof())
+    {
+
+        if (linenum++ < skip)
+            continue;
+
+        filei >> i >> j;
+
+        // Looking for exceptions
+        if (filei.bad())
+            throw std::logic_error(
+                "I/O error while reading the file " +
+                fn
+            );
+
+        if (filei.fail())
+            break;
+
+        if (i >= static_cast<int>(this->size()))
+            throw std::range_error(
+                "The agent["+std::to_string(linenum)+"] = " + std::to_string(i) +
+                " is above the max id " + std::to_string(this->size() - 1)
+                );
+
+        if (j >= static_cast<int>(this->entities.size()))
+            throw std::range_error(
+                "The entity["+std::to_string(linenum)+"] = " + std::to_string(j) +
+                " is above the max id " + std::to_string(this->entities.size() - 1)
+                );
+
+        source_.push_back(i);
+        target_.push_back(j);
+
+        entities[j].add_agent(population[i]);
+
+    }
+
+    return;
 
 }
 
@@ -6969,6 +7096,11 @@ inline void Model<TSeq>::print() const
 
         }
 
+    }
+
+    if (db.variant_id.size() == 0u)
+    {
+        printf_epiworld(" (none)\n");
     }
 
     printf_epiworld("\nTool(s):\n");
@@ -7764,7 +7896,7 @@ private:
     int       agent_idx       = -99;
     int agent_exposure_number = -99;
 
-    std::shared_ptr<TSeq> baseline_sequence = std::make_shared<TSeq>(default_sequence<TSeq>());
+    std::shared_ptr<TSeq> baseline_sequence = nullptr;
     std::shared_ptr<std::string> virus_name = nullptr;
     int date = -99;
     int id   = -99;
@@ -8044,7 +8176,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_infecting(epiworld_double * prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8056,7 +8188,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_recovery(epiworld_double * prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8553,8 +8685,7 @@ private:
     int date = -99;
     int id   = -99;
     std::shared_ptr<std::string> tool_name = nullptr;
-    std::shared_ptr<TSeq> sequence = std::make_shared<TSeq>(default_sequence<TSeq>());
-    TSeq sequence_unique  = default_sequence<TSeq>();
+    std::shared_ptr<TSeq> sequence         = nullptr;
     ToolFun<TSeq> susceptibility_reduction_fun = nullptr;
     ToolFun<TSeq> transmission_reduction_fun   = nullptr;
     ToolFun<TSeq> recovery_enhancer_fun        = nullptr;
@@ -8576,10 +8707,8 @@ public:
     // Tool(TSeq d, std::string name = "unknown tool");
 
     void set_sequence(TSeq d);
-    void set_sequence_unique(TSeq d);
     void set_sequence(std::shared_ptr<TSeq> d);
     std::shared_ptr<TSeq> get_sequence();
-    TSeq & get_sequence_unique();
 
     /**
      * @name Get and set the tool functions
@@ -8668,11 +8797,6 @@ inline void Tool<TSeq>::set_sequence(TSeq d) {
 }
 
 template<typename TSeq>
-inline void Tool<TSeq>::set_sequence_unique(TSeq d) {
-    sequence_unique = d;
-}
-
-template<typename TSeq>
 inline void Tool<TSeq>::set_sequence(std::shared_ptr<TSeq> d) {
     sequence = d;
 }
@@ -8680,11 +8804,6 @@ inline void Tool<TSeq>::set_sequence(std::shared_ptr<TSeq> d) {
 template<typename TSeq>
 inline std::shared_ptr<TSeq> Tool<TSeq>::get_sequence() {
     return sequence;
-}
-
-template<typename TSeq>
-inline TSeq & Tool<TSeq>::get_sequence_unique() {
-    return sequence_unique;
 }
 
 template<typename TSeq>
@@ -10436,7 +10555,7 @@ inline void default_add_tool(Action<TSeq> & a, Model<TSeq> * m)
 }
 
 template<typename TSeq>
-inline void default_rm_virus(Action<TSeq> & a, Model<TSeq> * m)
+inline void default_rm_virus(Action<TSeq> & a, Model<TSeq> * /*m*/)
 {
 
     Agent<TSeq> * p   = a.agent;    
@@ -10460,7 +10579,7 @@ inline void default_rm_virus(Action<TSeq> & a, Model<TSeq> * m)
 }
 
 template<typename TSeq>
-inline void default_rm_tool(Action<TSeq> & a, Model<TSeq> * m)
+inline void default_rm_tool(Action<TSeq> & a, Model<TSeq> * /*m*/)
 {
 
     Agent<TSeq> * p  = a.agent;    
@@ -12129,11 +12248,11 @@ inline ModelSURV<TSeq>::ModelSURV(
         // Figuring out latent period
         if (v->get_data().size() == 0u)
         {
-            epiworld_double latent_days = m->rgamma(m->p0, 1.0);
+            epiworld_double latent_days = m->rgamma(*m->p0, 1.0);
             v->get_data().push_back(latent_days);
 
             v->get_data().push_back(
-                m->rgamma(m->p1, 1.0) + latent_days
+                m->rgamma(*m->p1, 1.0) + latent_days
             );
         }
         
@@ -12688,13 +12807,13 @@ inline ModelSIRCONN<TSeq>::ModelSIRCONN(
 template<typename TSeq = EPI_DEFAULT_TSEQ>
 class ModelSEIRCONN : public epiworld::Model<TSeq> 
 {
-private:
+public:
+
     static const int SUSCEPTIBLE = 0;
     static const int EXPOSED     = 1;
     static const int INFECTED    = 2;
-    static const int RECOVERE    = 3;
+    static const int RECOVERED   = 3;
 
-public:
 
     ModelSEIRCONN() {
 
@@ -12956,7 +13075,7 @@ inline ModelSEIRCONN<TSeq>::ModelSEIRCONN(
 
     // Preparing the virus -------------------------------------------
     epiworld::Virus<TSeq> virus(vname);
-    virus.set_status(1,3,3);
+    virus.set_status(ModelSEIRCONN<TSeq>::EXPOSED, ModelSEIRCONN<TSeq>::RECOVERED, ModelSEIRCONN<TSeq>::RECOVERED);
     model.add_virus(virus, prevalence);
 
     // Adding updating function

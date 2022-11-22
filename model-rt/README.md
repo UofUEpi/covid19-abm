@@ -14,7 +14,8 @@ The specific features follow:
     individual. This represents the chance of direct contact.
   - Only infected non-hospitalized individuals can transmit the disease.
 
-The file [`parameters.txt`] contains the model parameters. The current values are:
+The file \[`parameters.txt`\] contains the model parameters. The current
+values are:
 
 | Parameter                |    Value |
 | :----------------------- | -------: |
@@ -29,7 +30,8 @@ The file [`parameters.txt`] contains the model parameters. The current values ar
 | Prevalence               |    50.00 |
 | N ties                   |     5.00 |
 | Sim count                |   100.00 |
-| Entity size              |   100.00 |
+| N entities               |   100.00 |
+| N interactions           |    10.00 |
 | Seed                     | 15454.00 |
 
 # Running the model
@@ -53,9 +55,9 @@ The file [`parameters.txt`] contains the model parameters. The current values ar
     ## Days (duration)     : 100 (of 100)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 22.00s (100 runs)
-    ## Last run speed      : 3.65 million agents x day / second
-    ## Average run speed   : 4.47 million agents x day / second
+    ## Total elapsed t     : 5.00s (100 runs)
+    ## Last run speed      : 17.97 million agents x day / second
+    ## Average run speed   : 16.89 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -67,11 +69,12 @@ The file [`parameters.txt`] contains the model parameters. The current values ar
     ## Model parameters:
     ##  - Days                     : 100.0000
     ##  - Death prob.              : 0.1000
-    ##  - Entity size              : 100.0000
     ##  - Hospitalization prob.    : 0.1000
     ##  - Incubation period        : 0.1400
     ##  - Infectiousness           : 0.5000
     ##  - Infectiousness in entity : 0.2500
+    ##  - N entities               : 100.0000
+    ##  - N interactions           : 10.0000
     ##  - N ties                   : 5.0000
     ##  - Population Size          : 10000.0000
     ##  - Prevalence               : 50.0000
@@ -80,18 +83,18 @@ The file [`parameters.txt`] contains the model parameters. The current values ar
     ##  - Sim count                : 100.0000
     ## 
     ## Distribution of the population at time 100:
-    ##  - (0) Susceptible  :  9950 -> 1141
-    ##  - (1) Exposed      :    50 -> 983
-    ##  - (2) Infected     :     0 -> 739
-    ##  - (3) Hospitalized :     0 -> 317
-    ##  - (4) Recovered    :     0 -> 5786
-    ##  - (5) Deseased     :     0 -> 1034
+    ##  - (0) Susceptible  :  9950 -> 9802
+    ##  - (1) Exposed      :    50 -> 0
+    ##  - (2) Infected     :     0 -> 0
+    ##  - (3) Hospitalized :     0 -> 0
+    ##  - (4) Recovered    :     0 -> 158
+    ##  - (5) Deseased     :     0 -> 40
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   0.98  0.02  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  0.86  0.14  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  0.78  0.09  0.13  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  0.79  0.13  0.08
+    ##  - Susceptible   1.00  0.00  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  0.87  0.14  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  0.77  0.09  0.14  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  0.81  0.10  0.09
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Deseased      0.00  0.00  0.00  0.00  0.00  1.00
 
@@ -114,9 +117,11 @@ ggplot(rt, aes(x = source_exposure_date, y = rt)) +
 
     ## `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-    ## Warning: Removed 108 rows containing missing values (`geom_point()`).
+    ## Warning: Removed 2 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 1 rows containing missing values (`geom_smooth()`).
+    ## Warning: Removed 656 rows containing missing values (`geom_point()`).
+
+    ## Warning: Removed 4 rows containing missing values (`geom_smooth()`).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 

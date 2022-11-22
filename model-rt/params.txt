@@ -12,5 +12,6 @@ Population Size : 10000
 Prevalence      : 50
 N ties          : 5
 Sim count       : 100
-Entity size     : 100
+N entities      : 100
+N interactions  : 10
 Seed            : 15454
