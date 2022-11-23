@@ -14,7 +14,7 @@ The specific features follow:
     individual. This represents the chance of direct contact.
   - Only infected non-hospitalized individuals can transmit the disease.
 
-The file [`parameters.txt`](parameters.txt) contains the model
+The file [`params.txt`](params.txt) contains the model
 parameters. The current values are:
 
 | Parameter                |    Value |
