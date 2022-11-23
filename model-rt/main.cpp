@@ -8,7 +8,7 @@ enum S {
     Infected,
     Hospitalized,
     Recovered,
-    Deseased
+    Deceased
 };
 
 // Update dynamics for exposed individuals
@@ -75,7 +75,7 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
     }
 
     // Individual dies
-    p->rm_virus(v, S::Deseased, epiworld::QueueValues::NoOne);
+    p->rm_virus(v, S::Deceased, epiworld::QueueValues::NoOne);
 
     return;
 
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
     model.add_status("Infected", update_infected_rt);
     model.add_status("Hospitalized", update_hospitalized_rt);
     model.add_status("Recovered");
-    model.add_status("Deseased");
+    model.add_status("Deceased");
 
     // Reading the model parameters
     model.read_params("params.txt");

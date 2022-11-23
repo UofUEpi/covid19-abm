@@ -57,9 +57,9 @@ The full program can be found in the file [main.cpp](main.cpp).
     ## Days (duration)     : 100 (of 100)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 5.00s (50 runs)
-    ## Last run speed      : 7.22 million agents x day / second
-    ## Average run speed   : 9.03 million agents x day / second
+    ## Total elapsed t     : 7.00s (50 runs)
+    ## Last run speed      : 5.49 million agents x day / second
+    ## Average run speed   : 6.80 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -90,7 +90,7 @@ The full program can be found in the file [main.cpp](main.cpp).
     ##  - (2) Infected     :     0 -> 0
     ##  - (3) Hospitalized :     0 -> 1
     ##  - (4) Recovered    :     0 -> 8341
-    ##  - (5) Deseased     :     0 -> 1656
+    ##  - (5) Deceased     :     0 -> 1656
     ## 
     ## Transition Probabilities:
     ##  - Susceptible   0.93  0.07  0.00  0.00  0.00  0.00
@@ -98,7 +98,7 @@ The full program can be found in the file [main.cpp](main.cpp).
     ##  - Infected      0.00  0.00  0.79  0.10  0.12  0.00
     ##  - Hospitalized  0.00  0.00  0.00  0.80  0.13  0.07
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
-    ##  - Deseased      0.00  0.00  0.00  0.00  0.00  1.00
+    ##  - Deceased      0.00  0.00  0.00  0.00  0.00  1.00
 
 # Computing reproductive number
 
@@ -121,7 +121,7 @@ ggplot(rt, aes(x = source_exposure_date, y = rt)) +
 
     ## Warning: Removed 160 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 462 rows containing missing values (`geom_point()`).
+    ## Warning: Removed 466 rows containing missing values (`geom_point()`).
 
     ## Warning: Removed 7 rows containing missing values (`geom_smooth()`).
 
