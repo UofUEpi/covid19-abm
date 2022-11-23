@@ -104,8 +104,8 @@ fwrite(
 # A uniform distribution. 100 agents per entity
 n_entities <- N_desired / 100
 agent_entity <- data.table(
-  id     = rep(1:N_desired - 1, 2),
-  entity = sample.int(n_entities, size = N_desired * 2, replace = TRUE) - 1
+  id     = rep(1:N_desired - 1, 1),
+  entity = sample.int(n_entities, size = N_desired * 1, replace = TRUE) - 1
 )
 
 fwrite(

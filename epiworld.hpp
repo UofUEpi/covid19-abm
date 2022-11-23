@@ -4514,7 +4514,7 @@ inline AdjList rgraph_blocked(
     epiworld_fast_uint n,
     epiworld_fast_uint blocksize,
     epiworld_fast_uint ncons,
-    Model<TSeq> & model
+    Model<TSeq>&
 ) {
 
     std::vector< epiworld_fast_uint > source_;
@@ -5022,6 +5022,16 @@ public:
     void add_entity_fun(Entity<TSeq> e, EntityToAgentFun<TSeq> fun);
     ///@}
 
+    /**
+     * @brief Associate agents-entities from a file
+     * 
+     * The structure of the file should be two columns separated by 
+     * space. The first column indexing between 0 and nagents-1, and the
+     * second column between 0 and nentities - 1.
+     * 
+     * @param fn Path to the file.
+     * @param skip How many rows to skip.
+     */
     void load_agents_entities_ties(std::string fn, int skip);
 
     /**
@@ -5323,6 +5333,7 @@ public:
      * @param name 
      */
     void set_name(std::string name);
+    std::string get_name() const;
 
 };
 
@@ -5816,7 +5827,7 @@ template<typename TSeq>
 inline void Model<TSeq>::clone_population(
     std::vector< Agent<TSeq> > & p,
     bool & d,
-    Model<TSeq> * model
+    Model<TSeq> *
 ) const {
 
     // Copy and clean
@@ -6499,6 +6510,9 @@ inline void Model<TSeq>::load_agents_entities_ties(
     )
 {
 
+    if (this->initialized)
+        throw std::logic_error("Agent-entity ties cannot be added once init(...) has been called.");
+
     int i,j;
     std::ifstream filei(fn);
 
@@ -6507,9 +6521,8 @@ inline void Model<TSeq>::load_agents_entities_ties(
 
     int linenum = 0;
     std::vector< epiworld_fast_uint > source_;
-    std::vector< epiworld_fast_uint > target_;
+    std::vector< std::vector< epiworld_fast_uint > > target_(entities.size());
 
-    source_.reserve(1e5);
     target_.reserve(1e5);
 
     while (!filei.eof())
@@ -6542,15 +6555,38 @@ inline void Model<TSeq>::load_agents_entities_ties(
                 " is above the max id " + std::to_string(this->entities.size() - 1)
                 );
 
-        source_.push_back(i);
-        target_.push_back(j);
+        target_[j].push_back(i);
 
-        entities[j].add_agent(population[i]);
 
     }
 
-    // Need to make the links effective
-    this->actions_run();
+    // Iterating over entities
+    for (size_t e = 0u; e < entities.size(); ++e)
+    {
+
+        // This entity will have individuals assigned to it, so we add it
+        if (target_[e].size() > 0u)
+        {
+
+            // Filling in the gaps
+            prevalence_entity[e] = static_cast<epiworld_double>(target_[e].size());
+            prevalence_entity_as_proportion[e] = false;
+
+            // Generating the assignment function
+            auto who = target_[e];
+            entities_dist_funs[e] =
+                [who](Entity<TSeq> & e, Model<TSeq>* m) -> void {
+
+                    for (auto w : who)
+                        m->population[w].add_entity(e, e.status_init, e.queue_init);
+                    
+                    return;
+                    
+                };
+
+        }
+
+    }
 
     return;
 
@@ -7665,6 +7701,12 @@ inline void Model<TSeq>::set_name(std::string name)
     this->name = name;
 }
 
+template<typename TSeq>
+inline std::string Model<TSeq>::get_name() const 
+{
+    return this->name;
+}
+
 #undef DURCAST
 
 #undef CASES_PAR
@@ -8203,7 +8245,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_death(epiworld_double * prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8215,7 +8257,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_infecting(epiworld_double prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return prob;
         };
@@ -8227,7 +8269,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_recovery(epiworld_double prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return prob;
         };
@@ -8239,7 +8281,7 @@ template<typename TSeq>
 inline void Virus<TSeq>::set_prob_death(epiworld_double prob)
 {
     VirusFun<TSeq> tmpfun = 
-        [prob](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [prob](Agent<TSeq> *, Virus<TSeq> &, Model<TSeq> *)
         {
             return prob;
         };
@@ -8304,7 +8346,7 @@ inline void Virus<TSeq>::set_post_immunity(
 
     PostRecoveryFun<TSeq> tmpfun = 
         [__no_reinfect](
-            Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m
+            Agent<TSeq> * p, Virus<TSeq> &, Model<TSeq> * m
             )
         {
             
@@ -8354,7 +8396,7 @@ inline void Virus<TSeq>::set_post_immunity(
     __no_reinfect->set_recovery_enhancer(0.0);
 
     PostRecoveryFun<TSeq> tmpfun = 
-        [__no_reinfect](Agent<TSeq> * p, Virus<TSeq> & v, Model<TSeq> * m)
+        [__no_reinfect](Agent<TSeq> * p, Virus<TSeq> &, Model<TSeq> * m)
         {
 
             // Have we registered the tool?
@@ -8898,7 +8940,7 @@ inline void Tool<TSeq>::set_susceptibility_reduction(epiworld_double * prob)
 {
 
     ToolFun<TSeq> tmpfun =
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8913,7 +8955,7 @@ inline void Tool<TSeq>::set_transmission_reduction(epiworld_double * prob)
 {
     
     ToolFun<TSeq> tmpfun =
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8928,7 +8970,7 @@ inline void Tool<TSeq>::set_recovery_enhancer(epiworld_double * prob)
 {
 
     ToolFun<TSeq> tmpfun =
-        [prob](Tool<TSeq> & t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8943,7 +8985,7 @@ inline void Tool<TSeq>::set_death_reduction(epiworld_double * prob)
 {
 
     ToolFun<TSeq> tmpfun =
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return *prob;
         };
@@ -8962,7 +9004,7 @@ inline void Tool<TSeq>::set_susceptibility_reduction(
 {
 
     ToolFun<TSeq> tmpfun = 
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return prob;
         };
@@ -8978,7 +9020,7 @@ inline void Tool<TSeq>::set_transmission_reduction(
 {
 
     ToolFun<TSeq> tmpfun = 
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return prob;
         };
@@ -8994,7 +9036,7 @@ inline void Tool<TSeq>::set_recovery_enhancer(
 {
 
     ToolFun<TSeq> tmpfun = 
-        [prob](Tool<TSeq> &  t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return prob;
         };
@@ -9010,7 +9052,7 @@ inline void Tool<TSeq>::set_death_reduction(
 {
 
     ToolFun<TSeq> tmpfun = 
-        [prob](Tool<TSeq> & t, Agent<TSeq> * p, VirusPtr<TSeq> v, Model<TSeq> * m)
+        [prob](Tool<TSeq> &, Agent<TSeq> *, VirusPtr<TSeq>, Model<TSeq> *)
         {
             return prob;
         };

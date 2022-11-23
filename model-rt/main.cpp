@@ -105,7 +105,7 @@ EPI_NEW_GLOBALFUN(contact, int)
                 continue;
 
             // Is the individual getting the infection?
-            double p_infection = 1.0 - std::pow(1.0 - *m->p4, n_viruses);
+            double p_infection = 1.0 - std::pow(1.0 - m->par("Infectiousness in entity"), n_viruses);
 
             if (m->runif() >= p_infection)
                 continue;
@@ -163,8 +163,6 @@ int main(int argc, char* argv[]) {
         false                     // Directed?
         );
  
-    model.init(model("Days"), model("Seed"));
-
     // Adding randomly distributed entities, each one with capacity for entity_capacity
     for (size_t r = 0u; r < model("N entities"); ++r)
     {
@@ -178,6 +176,9 @@ int main(int argc, char* argv[]) {
     // This will act through the global
     model.add_global_action(contact, -99);
     
+    
+    model.init(model("Days"), model("Seed"));
+
     // Adding multi-file write
     auto sav = epiworld::make_save_run<int>(
         "saves/main_out_%04li", // std::string fmt,
