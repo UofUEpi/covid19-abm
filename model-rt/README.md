@@ -14,17 +14,20 @@ The specific features follow:
     individual. This represents the chance of direct contact.
   - Only infected non-hospitalized individuals can transmit the disease.
 
-The file [`params.txt`](params.txt) contains the model
-parameters. The current values are:
+The file [`params.txt`](params.txt) contains the model parameters. The
+current values are:
 
 | Parameter                |    Value |
 | :----------------------- | -------: |
-| Incubation period        |     0.14 |
+| Gamma shape (incubation) |     7.00 |
+| Gamma rate (incubation)  |     1.00 |
+| Gamma shape (infected)   |     7.00 |
+| Gamma rate (infected)    |     1.00 |
 | Hospitalization prob.    |     0.10 |
-| Death prob.              |     0.10 |
+| Prob. hosp. recovers     |     0.50 |
+| Prob. hosp. dies         |     0.50 |
 | Infectiousness           |     0.50 |
 | Infectiousness in entity |     0.25 |
-| Prob. of Recovery        |     0.14 |
 | Days                     |   100.00 |
 | Population Size          | 10000.00 |
 | Prevalence               |    10.00 |
@@ -57,9 +60,9 @@ The full program can be found in the file [main.cpp](main.cpp).
     ## Days (duration)     : 100 (of 100)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 7.00s (50 runs)
-    ## Last run speed      : 5.49 million agents x day / second
-    ## Average run speed   : 6.80 million agents x day / second
+    ## Total elapsed t     : 8.00s (50 runs)
+    ## Last run speed      : 4.12 million agents x day / second
+    ## Average run speed   : 5.73 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -70,9 +73,11 @@ The full program can be found in the file [main.cpp](main.cpp).
     ## 
     ## Model parameters:
     ##  - Days                     : 100.0000
-    ##  - Death prob.              : 0.1000
+    ##  - Gamma rate (incubation)  : 1.0000
+    ##  - Gamma rate (infected)    : 1.0000
+    ##  - Gamma shape (incubation) : 7.0000
+    ##  - Gamma shape (infected)   : 7.0000
     ##  - Hospitalization prob.    : 0.1000
-    ##  - Incubation period        : 0.1400
     ##  - Infectiousness           : 0.5000
     ##  - Infectiousness in entity : 0.2500
     ##  - N entities               : 100.0000
@@ -80,23 +85,24 @@ The full program can be found in the file [main.cpp](main.cpp).
     ##  - N ties                   : 5.0000
     ##  - Population Size          : 10000.0000
     ##  - Prevalence               : 10.0000
-    ##  - Prob. of Recovery        : 0.1400
+    ##  - Prob. hosp. dies         : 0.5000
+    ##  - Prob. hosp. recovers     : 0.5000
     ##  - Seed                     : 1545.0000
     ##  - Sim count                : 50.0000
     ## 
     ## Distribution of the population at time 100:
-    ##  - (0) Susceptible  :  9990 -> 2
+    ##  - (0) Susceptible  :  9990 -> 155
     ##  - (1) Exposed      :    10 -> 0
     ##  - (2) Infected     :     0 -> 0
-    ##  - (3) Hospitalized :     0 -> 1
-    ##  - (4) Recovered    :     0 -> 8341
-    ##  - (5) Deceased     :     0 -> 1656
+    ##  - (3) Hospitalized :     0 -> 0
+    ##  - (4) Recovered    :     0 -> 9364
+    ##  - (5) Deceased     :     0 -> 481
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   0.93  0.07  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  0.85  0.15  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  0.79  0.10  0.12  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  0.80  0.13  0.07
+    ##  - Susceptible   0.96  0.04  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  0.84  0.16  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  0.53  0.06  0.42  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  0.29  0.35  0.36
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Deceased      0.00  0.00  0.00  0.00  0.00  1.00
 
@@ -119,11 +125,9 @@ ggplot(rt, aes(x = source_exposure_date, y = rt)) +
 
     ## `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-    ## Warning: Removed 160 rows containing non-finite values (`stat_smooth()`).
+    ## Warning: Removed 29 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 466 rows containing missing values (`geom_point()`).
-
-    ## Warning: Removed 7 rows containing missing values (`geom_smooth()`).
+    ## Warning: Removed 249 rows containing missing values (`geom_point()`).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 
@@ -162,3 +166,24 @@ epicurves[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ## `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
 ![](README_files/figure-gfm/totals-1.png)<!-- -->
+
+Status at the end of the simulation
+
+``` r
+epicurves_end <- epicurves[date == max(date)]
+epicurves_end[, .(
+    Avg     = mean(counts),
+    `50%`   = quantile(counts, probs = .5),
+    `2.5%`  = quantile(counts, probs = .025),
+    `97.5%` = quantile(counts, probs = .975)
+    ), by = "status"] |> knitr::kable()
+```
+
+| status       |     Avg |    50% |     2.5% |    97.5% |
+| :----------- | ------: | -----: | -------: | -------: |
+| Susceptible  |  167.90 |  167.5 |  143.000 |  192.875 |
+| Exposed      |    0.00 |    0.0 |    0.000 |    0.000 |
+| Infected     |    0.00 |    0.0 |    0.000 |    0.000 |
+| Hospitalized |    0.00 |    0.0 |    0.000 |    0.000 |
+| Recovered    | 9335.72 | 9336.5 | 9284.450 | 9391.750 |
+| Deceased     |  496.38 |  497.0 |  457.225 |  541.325 |

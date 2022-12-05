@@ -1,10 +1,14 @@
 * Transmission dynamics
-Incubation period        : 0.14
+* The gamma parameters were got from https://pubmed.ncbi.nlm.nih.gov/33818217/
+Gamma shape (incubation) : 7.0
+Gamma rate (incubation)  : 1.0
+Gamma shape (infected)   : 7.0
+Gamma rate (infected)    : 1.0
 Hospitalization prob.    : 0.1
-Death prob.              : 0.1
+Prob. hosp. recovers     : 0.5
+Prob. hosp. dies         : 0.5
 Infectiousness           : 0.5
 Infectiousness in entity : 0.25
-Prob. of Recovery        : 0.14
 
 * Global parameters
 Days            : 100

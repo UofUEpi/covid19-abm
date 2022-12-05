@@ -81,3 +81,15 @@ epicurves[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
     geom_jitter(aes(colour = status), alpha = .1)
 ```
 
+Status at the end of the simulation
+
+```{r status-at-the-end}
+epicurves_end <- epicurves[date == max(date)]
+epicurves_end[, .(
+    Avg     = mean(counts),
+    `50%`   = quantile(counts, probs = .5),
+    `2.5%`  = quantile(counts, probs = .025),
+    `97.5%` = quantile(counts, probs = .975)
+    ), by = "status"] |> knitr::kable()
+```
+

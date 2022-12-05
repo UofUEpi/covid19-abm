@@ -14,13 +14,41 @@ enum S {
 // Update dynamics for exposed individuals
 EPI_NEW_UPDATEFUN(update_exposed_rt, int) 
 {
-    if (m->runif() < *m->p0)
+    // Checking if the data was assigned
+    auto v = p->get_virus(0u);
+    if (m->today() == (v->get_date() + 1))
+    {
+
+        // Checking the same
+        if (v->get_data().size() != 3u)
+            v->get_data().resize(3u);
+
+        // Days of incubation
+        v->get_data()[0u] = v->get_date() + m->rgamma(
+            m->par("Gamma shape (incubation)"),
+            m->par("Gamma rate (incubation)")
+            );
+
+        // Duration as Infected
+        v->get_data()[1u] = v->get_date() + m->rgamma(
+            m->par("Gamma shape (infected)"),
+            m->par("Gamma rate (infected)")
+            );
+
+        // Prob of becoming hospitalized
+        v->get_data()[2u] = (
+            m->runif() < m->par("Hospitalization prob.")
+            ) ? 100.0 : -100.0;
+
+
+    } else if (m->today() >= v->get_data()[0u])
     {
         p->change_status(S::Infected, epiworld::QueueValues::Everyone);
         return;
     }
 
     return;
+
 }
 
 // Update dynamics for infected individuals
@@ -29,25 +57,21 @@ EPI_NEW_UPDATEFUN(update_infected_rt, int)
 
     // Computing probability of recovery
     auto v = p->get_virus(0u);
-    auto probs = {
-        v->get_prob_recovery(),
-        (*m->p1)
-        };
 
-    int which = epiworld::roulette(probs, m);
-
-    if (which < 0)
+    if (m->today() < v->get_data()[1u])
         return;
 
-    if (which == 0) // Then it recovered
+    if (v->get_data()[2u] < 0)
     {
         p->rm_virus(v, S::Recovered, -epiworld::QueueValues::Everyone);
         return;
     }
-
-    // Individual goes hospitalized
-    p->change_status(S::Hospitalized, -epiworld::QueueValues::Everyone);
-    return;
+    else
+    {
+        // Individual goes hospitalized
+        p->change_status(S::Hospitalized, -epiworld::QueueValues::Everyone);
+        return;
+    }  
 
 }
 
@@ -58,8 +82,8 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
     // Computing the recovery probability
     auto v = p->get_virus(0u);
     auto probs = {
-        v->get_prob_recovery(),
-        (*m->p2)
+        m->par("Prob. hosp. recovers"),
+        m->par("Prob. hosp. dies")
         };
 
     int which = epiworld::roulette(probs, m);
@@ -127,10 +151,11 @@ EPI_NEW_GLOBALFUN(contact, int)
 
 
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[])
+{
 
     // Setting up the model ----------------------------------------------------
-    epiworld::Model<> model;
+    Model<> model;
 
     model.add_status(
         "Susceptible", 
@@ -149,9 +174,9 @@ int main(int argc, char* argv[]) {
     // Creating the virus
     epiworld::Virus<> covid19("Covid19");
     covid19.set_prob_infecting(&model("Infectiousness"));
-    covid19.set_prob_recovery(&model("Prob. of Recovery"));
     covid19.set_status(S::Exposed, S::Recovered);
     covid19.set_queue(epiworld::QueueValues::OnlySelf, -99LL);
+    covid19.get_data() = {0.0, 0.0F};
 
     model.add_virus_n(covid19, model("Prevalence"));
     
@@ -197,3 +222,4 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
