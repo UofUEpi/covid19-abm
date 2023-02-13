@@ -46,11 +46,11 @@ rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
     rbindlist()
 
 # Computing for each individual
-rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
+rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date", "thread")]
 setorder(rt, source_exposure_date)
 
 ggplot(rt, aes(x = source_exposure_date, y = rt)) +
-    geom_jitter(alpha = .1) +
+    geom_jitter(aes(colour = as.factor(thread == 0)), alpha = .1) +
     geom_smooth() +
     lims(y = c(0, 5))
 
@@ -69,7 +69,7 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
 fwrite(epicurves, "epicurves.csv")
 
 epicurves[status %in% c("Exposed", "Infected", "Hospitalized")] |>
-    ggplot(aes(x = date, y = counts)) +
+    ggplot(aes(x = date, y = counts, shape = as.factor(thread == 0))) +
     geom_smooth(aes(colour = status)) +
     geom_jitter(aes(colour = status), alpha = .1)
 ```

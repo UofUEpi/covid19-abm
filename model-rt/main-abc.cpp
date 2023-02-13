@@ -24,7 +24,6 @@ std::vector< double > simfun(
     LFMCMC<std::vector<double>> * m
 ) {
 
-
     // Mapping the parameters: params is normal but needs to be between 0 and 1.
     model("Prob. of Recovery")     = 1.0/(1.0 + std::exp(-params[0u]));
     model("Infectiousness")        = 1.0/(1.0 + std::exp(-params[1u]));

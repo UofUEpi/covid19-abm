@@ -95,7 +95,7 @@ saveRDS(
 )
 
 fwrite(
-  unique(rbind(households)), # Will be connected through entities
+  unique(rbind(households, visits)), # Will be connected through entities
   file = "population.txt",
   sep = " ", col.names = FALSE
 )

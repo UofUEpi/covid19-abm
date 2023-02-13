@@ -1,3 +1,7 @@
+#include <omp.h>
+
+// #define EPI_DEBUG
+
 #include "../epiworld.hpp"
 
 using namespace epiworld;
@@ -43,7 +47,7 @@ EPI_NEW_UPDATEFUN(update_exposed_rt, int)
 
     } else if (m->today() >= v->get_data()[0u])
     {
-        p->change_status(S::Infected, epiworld::QueueValues::Everyone);
+        p->change_status(m, S::Infected, epiworld::QueueValues::Everyone);
         return;
     }
 
@@ -63,15 +67,19 @@ EPI_NEW_UPDATEFUN(update_infected_rt, int)
 
     if (v->get_data()[2u] < 0)
     {
-        p->rm_virus(v, S::Recovered, -epiworld::QueueValues::Everyone);
+        
+        p->rm_virus(v, m, S::Recovered, -epiworld::QueueValues::Everyone);
         return;
+
     }
     else
     {
+
         // Individual goes hospitalized
-        p->change_status(S::Hospitalized, -epiworld::QueueValues::Everyone);
+        p->change_status(m, S::Hospitalized, -epiworld::QueueValues::Everyone);
         return;
-    }  
+
+    }
 
 }
 
@@ -94,12 +102,12 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
 
     if (which == 0) // Then it recovered
     {
-        p->rm_virus(v, S::Recovered, epiworld::QueueValues::NoOne);
+        p->rm_virus(v, m, S::Recovered, epiworld::QueueValues::NoOne);
         return;
     }
 
     // Individual dies
-    p->rm_virus(v, S::Deceased, epiworld::QueueValues::NoOne);
+    p->rm_virus(v, m, S::Deceased, epiworld::QueueValues::NoOne);
 
     return;
 
@@ -110,13 +118,13 @@ EPI_NEW_UPDATEFUN(update_hospitalized_rt, int)
  */
 EPI_NEW_GLOBALFUN(contact, int)
 {
-    for (auto & a : *(m->get_agents()))
+    for (auto & a : (m->get_agents()))
     {
         // Will it get it from the entities?
         if (a.get_status() == S::Susceptible)
         {
 
-            AgentsSample<int> neighbors(a, m->par("N interactions"), true);
+            AgentsSample<int> neighbors(m, a, m->par("N interactions"), true);
 
             int n_viruses = 0;
             for (auto n : neighbors) {
@@ -139,6 +147,7 @@ EPI_NEW_GLOBALFUN(contact, int)
 
             a.add_virus(
                 *(m->array_virus_tmp[which]), // Viruse.
+                m, 
                 S::Exposed,                   // New state.
                 QueueValues::OnlySelf         // Change on the queue.
                 ); 
@@ -171,6 +180,9 @@ int main(int argc, char* argv[])
     // Reading the model parameters
     model.read_params("params.txt");
 
+    int nthreads = static_cast<int>(model("OMP threads"));
+    omp_set_num_threads(nthreads);
+
     // Creating the virus
     epiworld::Virus<> covid19("Covid19");
     covid19.set_prob_infecting(&model("Infectiousness"));
@@ -181,12 +193,13 @@ int main(int argc, char* argv[])
     model.add_virus_n(covid19, model("Prevalence"));
     
     // Adding the population
-    model.agents_from_adjlist(
-        "population.txt",         // Filepath
-        model("Population Size"), // Population size
-        0,                        // Lines to skip
-        false                     // Directed?
-        );
+    // model.agents_from_adjlist(
+    //     "population.txt",         // Filepath
+    //     model("Population Size"), // Population size
+    //     0,                        // Lines to skip
+    //     false                     // Directed?
+    //     );
+    model.agents_smallworld((uint) model("Population Size"), 5, false, .05);
  
     // Adding randomly distributed entities, each one with capacity for entity_capacity
     for (size_t r = 0u; r < model("N entities"); ++r)
@@ -199,7 +212,7 @@ int main(int argc, char* argv[])
     model.load_agents_entities_ties("agents_entities.txt", 0);
 
     // This will act through the global
-    model.add_global_action(contact, -99);
+    // model.add_global_action(contact, -99);
     
     
     model.init(model("Days"), model("Seed"));
@@ -217,7 +230,7 @@ int main(int argc, char* argv[])
         true   // bool reproductive
     );
 
-    model.run_multiple(model("Sim count"), sav);
+    model.run_multiple(model("Sim count"), sav, true, true, nthreads);
     model.print();
 
     return 0;
