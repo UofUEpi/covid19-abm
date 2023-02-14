@@ -205,14 +205,14 @@ int main(int argc, char* argv[])
     for (size_t r = 0u; r < model("N entities"); ++r)
     {
         Entity<int> e(std::string("Location ") + std::to_string(r));
-        model.add_entity_n(e, 0);
+        model.add_entity(e);
     }
 
     // Loading the entities
     model.load_agents_entities_ties("agents_entities.txt", 0);
 
     // This will act through the global
-    // model.add_global_action(contact, -99);
+    model.add_global_action(contact, -99);
     
     
     model.init(model("Days"), model("Seed"));

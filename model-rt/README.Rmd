@@ -70,15 +70,15 @@ fwrite(epicurves, "epicurves.csv")
 
 epicurves[status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts, shape = as.factor(thread == 0))) +
-    geom_smooth(aes(colour = status)) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status)) # +
+    # geom_jitter(aes(colour = status), alpha = .1)
 ```
 
 ```{r totals}
 epicurves[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    geom_smooth(aes(colour = status)) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status)) # +
+    # geom_jitter(aes(colour = status), alpha = .1)
 ```
 
 Status at the end of the simulation

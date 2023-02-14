@@ -8,17 +8,17 @@ Hospitalization prob.    : 0.1
 Prob. hosp. recovers     : 0.5
 Prob. hosp. dies         : 0.5
 Infectiousness           : 0.9
-Infectiousness in entity : 0.25
+Infectiousness in entity : 0.9
 
 * Global parameters
 Days            : 100
 Population Size : 10000
 Prevalence      : 100
 N ties          : 5
-Sim count       : 100
+Sim count       : 50
 N entities      : 100
 Seed            : 1545
 N interactions  : 5
 
 * Others
-OMP threads: 4
+OMP threads: 1
