@@ -21,4 +21,4 @@ Seed            : 1545
 N interactions  : 5
 
 * Others
-OMP threads: 1
+OMP threads: 2

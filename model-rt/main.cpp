@@ -1,6 +1,6 @@
 #include <omp.h>
 
-// #define EPI_DEBUG
+#define EPI_DEBUG
 
 #include "../epiworld.hpp"
 
@@ -231,7 +231,6 @@ int main(int argc, char* argv[])
     );
 
     model.run_multiple(model("Sim count"), sav, true, true, nthreads);
-    model.print();
 
     return 0;
 }
