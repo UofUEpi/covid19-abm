@@ -7,18 +7,18 @@ Gamma rate (infected)    : 1.0
 Hospitalization prob.    : 0.1
 Prob. hosp. recovers     : 0.5
 Prob. hosp. dies         : 0.5
-Infectiousness           : 0.9
-Infectiousness in entity : 0.9
+Infectiousness           : 0.8
+Infectiousness in entity : 0.1
 
 * Global parameters
-Days            : 100
+Days            : 50
 Population Size : 10000
 Prevalence      : 100
 N ties          : 5
 Sim count       : 50
-N entities      : 100
+N entities      : 200
 Seed            : 1545
-N interactions  : 5
+N interactions  : 20
 
 * Others
-OMP threads: 2
+OMP threads: 4

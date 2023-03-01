@@ -1,6 +1,6 @@
 #include <omp.h>
 
-#define EPI_DEBUG
+// #define EPI_DEBUG
 
 #include "../epiworld.hpp"
 
@@ -214,9 +214,6 @@ int main(int argc, char* argv[])
     // This will act through the global
     model.add_global_action(contact, -99);
     
-    
-    model.init(model("Days"), model("Seed"));
-
     // Adding multi-file write
     auto sav = epiworld::make_save_run<int>(
         "saves/main_out_%04li", // std::string fmt,
@@ -230,7 +227,9 @@ int main(int argc, char* argv[])
         true   // bool reproductive
     );
 
-    model.run_multiple(model("Sim count"), sav, true, true, nthreads);
+    model.run_multiple(model("Days"), model("Sim count"), model("Seed"), sav, true, true, nthreads);
+
+    model.print();
 
     return 0;
 }
