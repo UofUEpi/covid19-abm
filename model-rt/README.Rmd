@@ -46,12 +46,16 @@ rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
     rbindlist()
 
 # Computing for each individual
-rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date", "thread")]
+rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
 setorder(rt, source_exposure_date)
 
-ggplot(rt, aes(x = source_exposure_date, y = rt)) +
-    geom_jitter(alpha = .1) +
-    geom_smooth(method = "loess", se = TRUE)
+rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
+rt_sample <- rt[pick <= 200]
+
+ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
+    geom_point(alpha = .1) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
 
 setorder(rt, id, source_exposure_date, rt)
 fwrite(rt, "reproductive_numbers.csv")
@@ -74,14 +78,14 @@ epicurves_sample <- epicurves[pick <= 200]
 
 epicurves_sample[status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status), method="loess", se = TRUE)
 ```
 
 ```{r totals}
 epicurves_sample[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    # geom_smooth(aes(colour = status), method = "loess", se = TRUE) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status), method = "loess", se = TRUE)
+    # geom_jitter(aes(colour = status), alpha = .1)
 ```
 
 Status at the end of the simulation

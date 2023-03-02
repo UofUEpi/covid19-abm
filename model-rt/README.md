@@ -32,7 +32,7 @@ current values are:
 | Population Size          | 10000.0 |
 | Prevalence               |   100.0 |
 | N ties                   |     5.0 |
-| Sim count                |    50.0 |
+| Sim count                |   100.0 |
 | N entities               |   200.0 |
 | Seed                     |  1545.0 |
 | N interactions           |    20.0 |
@@ -46,7 +46,7 @@ The full program can be found in the file [main.cpp](main.cpp).
 ./main.o
 ```
 
-    ## Starting multiple runs (50) using 4 thread(s)
+    ## Starting multiple runs (100) using 4 thread(s)
     ## _________________________________________________________________________
     ## _________________________________________________________________________
     ## ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| done.
@@ -61,9 +61,9 @@ The full program can be found in the file [main.cpp](main.cpp).
     ## Days (duration)     : 51 (of 50)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 2.00s (50 runs)
-    ## Last run speed      : 2.18 million agents x day / second
-    ## Average run speed   : 9.33 million agents x day / second
+    ## Total elapsed t     : 5.00s (100 runs)
+    ## Last run speed      : 2.00 million agents x day / second
+    ## Average run speed   : 9.24 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -90,21 +90,21 @@ The full program can be found in the file [main.cpp](main.cpp).
     ##  - Prob. hosp. dies         : 0.5000
     ##  - Prob. hosp. recovers     : 0.5000
     ##  - Seed                     : 1545.0000
-    ##  - Sim count                : 50.0000
+    ##  - Sim count                : 100.0000
     ## 
     ## Distribution of the population at time 51:
-    ##  - (0) Susceptible  :  9900 -> 0
-    ##  - (1) Exposed      :   100 -> 14
-    ##  - (2) Infected     :     0 -> 24
-    ##  - (3) Hospitalized :     0 -> 3
-    ##  - (4) Recovered    :     0 -> 9470
-    ##  - (5) Deceased     :     0 -> 489
+    ##  - (0) Susceptible  :  9900 -> 19
+    ##  - (1) Exposed      :   100 -> 2835
+    ##  - (2) Infected     :     0 -> 1398
+    ##  - (3) Hospitalized :     0 -> 116
+    ##  - (4) Recovered    :     0 -> 5414
+    ##  - (5) Deceased     :     0 -> 218
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   0.83  0.17  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  0.85  0.15  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  0.54  0.05  0.41  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  0.33  0.36  0.31
+    ##  - Susceptible   0.81  0.19  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  0.83  0.17  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  0.53  0.05  0.42  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  0.35  0.34  0.32
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Deceased      0.00  0.00  0.00  0.00  0.00  1.00
 
@@ -116,15 +116,25 @@ rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
     rbindlist()
 
 # Computing for each individual
-rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date", "thread")]
+rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
 setorder(rt, source_exposure_date)
 
-ggplot(rt, aes(x = source_exposure_date, y = rt)) +
-    geom_jitter(alpha = .1) +
-    geom_smooth(method = "loess", se = TRUE)
+rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
+rt_sample <- rt[pick <= 200]
+
+ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
+    geom_point(alpha = .1) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
 ```
 
     ## `geom_smooth()` using formula = 'y ~ x'
+
+    ## Warning: Removed 49 rows containing non-finite values (`stat_smooth()`).
+
+    ## Warning: Removed 49 rows containing missing values (`geom_point()`).
+
+    ## Warning: Removed 3 rows containing missing values (`geom_smooth()`).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 
@@ -150,19 +160,26 @@ epicurves_sample <- epicurves[pick <= 200]
 
 epicurves_sample[status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status), method="loess", se = TRUE)
 ```
+
+    ## `geom_smooth()` using formula = 'y ~ x'
 
 ![](README_files/figure-gfm/transitions-1.png)<!-- -->
 
 ``` r
 epicurves_sample[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    # geom_smooth(aes(colour = status), method = "loess", se = TRUE) +
-    geom_jitter(aes(colour = status), alpha = .1)
+    geom_smooth(aes(colour = status), method = "loess", se = TRUE)
 ```
 
+    ## `geom_smooth()` using formula = 'y ~ x'
+
 ![](README_files/figure-gfm/totals-1.png)<!-- -->
+
+``` r
+    # geom_jitter(aes(colour = status), alpha = .1)
+```
 
 Status at the end of the simulation
 
@@ -176,11 +193,11 @@ epicurves_end[, .(
     ), by = "status"] |> knitr::kable()
 ```
 
-| status       |  Avg |  50% | 2.5% | 97.5% |
-| :----------- | ---: | ---: | ---: | ----: |
-| Susceptible  |    0 |    0 |    0 |     0 |
-| Exposed      |   14 |   14 |   14 |    14 |
-| Infected     |   24 |   24 |   24 |    24 |
-| Hospitalized |    3 |    3 |    3 |     3 |
-| Recovered    | 9470 | 9470 | 9470 |  9470 |
-| Deceased     |  489 |  489 |  489 |   489 |
+| status       |         Avg |  50% | 2.5% | 97.5% |
+| :----------- | ----------: | ---: | ---: | ----: |
+| Susceptible  | 2519.586923 |    0 |    0 |  8090 |
+| Exposed      |  145.376154 |    0 |    0 |   297 |
+| Infected     |   42.988461 |    1 |    0 |   103 |
+| Hospitalized |    2.846154 |    0 |    0 |     9 |
+| Recovered    | 6926.759231 | 9481 | 1498 |  9531 |
+| Deceased     |  362.443077 |  484 |   70 |   555 |

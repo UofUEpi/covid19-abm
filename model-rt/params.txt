@@ -15,7 +15,7 @@ Days            : 50
 Population Size : 10000
 Prevalence      : 100
 N ties          : 5
-Sim count       : 50
+Sim count       : 100
 N entities      : 200
 Seed            : 1545
 N interactions  : 20
