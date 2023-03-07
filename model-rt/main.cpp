@@ -137,7 +137,9 @@ EPI_NEW_GLOBALFUN(contact, int)
                 continue;
 
             // Is the individual getting the infection?
-            double p_infection = 1.0 - std::pow(1.0 - m->par("Infectiousness in entity"), n_viruses);
+            double p_infection = 1.0 - std::pow(
+	        1.0 - m->par("Infectiousness in entity"), n_viruses
+		);
 
             if (m->runif() >= p_infection)
                 continue;
