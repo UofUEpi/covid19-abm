@@ -32,6 +32,20 @@ knitr::kable(params, row.names = FALSE)
 
 The full program can be found in the file [main.cpp](main.cpp).
 
+# Network data
+
+```{r netplot, cache = TRUE}
+families <- fread("population.txt")
+entities <- fread("agents_entities.txt")[1:2000]
+
+library(igraph)
+entities[, V2 := V2 + max(V1) + 1]
+gr <- graph_from_edgelist(as.matrix(entities) + 1)
+
+library(netplot)
+nplot(gr, sample.edges = .5)
+```
+
 # Running the model
 
 ```{bash}

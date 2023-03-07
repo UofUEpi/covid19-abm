@@ -53,6 +53,19 @@ if (nrow(households) < N_desired)
       id        = max(households$id) + 1L:(N_desired - nrow(households))
     ))
 
+# Generating the locations
+pop_locations <- data.table(
+  household = 1:max(households$household)
+)
+pop_locations[, lon := runif(.N)]
+pop_locations[, lat := runif(.N)]
+
+pop_locations <- merge(
+  x = pop_locations, 
+  y = households[, .(id, household)],
+  all.x = FALSE, all.y = TRUE
+  )
+
 households <- merge(
   households[,.(household, ego = id)],
   households[,.(household, alter = id)], 
@@ -65,51 +78,43 @@ households <- unique(households)
 # Building ties between individuals --------------------------------------------
 p_visit <- 1 - (1 - 1/N_locations)^N_avg_locations
 
-# Sampling visits
-visits <- which(matrix(
-  runif(N_locations * N_desired) < p_visit, ncol = N_desired
-), arr.ind = TRUE)
+nvisits <- rbinom(1, size=N_desired * (N_desired - 1)/2, prob = p_visit)
 
-visits <- data.table(
-  id  = visits[,1] - 1L,
-  loc = visits[,2]
+who <- sample.int(n = N_desired, size = N_desired * 5, replace = TRUE)
+who <- data.table(id = who)
+who <- who[, .(n = .N), by = "id"]
+setorder(who, id)
+
+places <- data.table(
+  id = (1:N_locations) - 1,
+  lon = runif(N_locations),
+  lat = runif(N_locations)
 )
 
-# Creating the bipartite graph  
-visits <- merge(
-  visits[, .(ego = id, loc)],
-  visits[, .(alter = id, loc)],
-  by = "loc", allow.cartesian = TRUE, all = TRUE
-)[, loc:=NULL] |> unique()
+pop_places_ties <- NULL
+for (i in 1:nrow(who)) {
 
-# Retrieving the edgelist
-visits <- visits[, .(ego = fifelse(ego > alter, alter, ego), alter = fifelse(ego > alter, ego, alter))]
-visits <- unique(visits)[ego != alter,]
+  w <- pop_locations[i, sqrt((places$lon - lon)^2 + (places$lat - lat)^2)]
+  w <- sample.int(size = who[i,n], n = N_locations, prob = 1/w)
+  pop_places_ties <- rbind(
+    pop_places_ties,
+    data.table(agent = who[i,id] - 1, place = w - 1)
+  )
 
-mean(table(visits[, c(ego, alter)])) # 22.2 as expected
-hist(table(visits[, c(ego, alter)]))
+  if (!i %% 200)
+    message(i, " complete")
 
-saveRDS(
-  list(households = households, outsize_contacts = visits),
-  file = "population.rds"
-)
+}
 
 fwrite(
-  unique(rbind(households, visits)), # Will be connected through entities
+  unique(rbind(households)), # Will be connected through entities
   file = "population.txt",
   sep = " ", col.names = FALSE
 )
 
-# Sampling one entity per agent, using 100 agents per entity
-# A uniform distribution. 100 agents per entity
-n_entities <- N_desired / 100
-agent_entity <- data.table(
-  id     = rep(1:N_desired - 1, 1),
-  entity = sample.int(n_entities, size = N_desired * 1, replace = TRUE) - 1
-)
-
 fwrite(
-  unique(agent_entity),
+  unique(pop_places_ties),
   file = "agents_entities.txt",
   sep = " ", col.names = FALSE
 )
+

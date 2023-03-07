@@ -2907,12 +2907,15 @@ inline void DataBase<TSeq>::reset()
     hist_total_status.clear();
     hist_total_nvariants_active.clear();
     hist_total_counts.clear();
+    hist_transition_matrix.clear();
 
     transmission_date.clear();
     transmission_variant.clear();
     transmission_source.clear();
     transmission_target.clear();
     transmission_source_exposure_date.clear();
+
+    
 
     return;
 
@@ -7596,27 +7599,8 @@ inline void Model<TSeq>::run_multiple(
 
             }
 
-            #ifdef EPI_DEBUG
-            #pragma omp barrier
-            #pragma omp master 
-            {
-                this->print(true);
-
-                for (auto & m: these)
-                {
-
-                    m->print(true);
-
-                    EPI_DEBUG_FAIL_AT_TRUE(
-                        db != m->get_db(),
-                        "Model:: Databases master and child don't match"
-                    )
-                    
-                }
-
-            }
-            #endif        
         }
+        
     }
 
     // Adjusting the number of replicates
@@ -13178,7 +13162,7 @@ inline const Entity<TSeq> & Agent<TSeq>::get_entity(size_t i) const
     if (i >= n_entities)
         throw std::range_error("Trying to get to an agent's entity outside of the range.");
 
-    return model->entities[i];
+    return model->entities[entities[i]];
 }
 
 template<typename TSeq>
@@ -13187,7 +13171,7 @@ inline Entity<TSeq> & Agent<TSeq>::get_entity(size_t i)
     if (i >= n_entities)
         throw std::range_error("Trying to get to an agent's entity outside of the range.");
 
-    return model->entities[i];
+    return model->entities[entities[i]];
 }
 
 template<typename TSeq>
