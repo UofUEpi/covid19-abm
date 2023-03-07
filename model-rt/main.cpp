@@ -193,13 +193,13 @@ int main(int argc, char* argv[])
     model.add_virus_n(covid19, model("Prevalence"));
     
     // Adding the population
-    // model.agents_from_adjlist(
-    //     "population.txt",         // Filepath
-    //     model("Population Size"), // Population size
-    //     0,                        // Lines to skip
-    //     false                     // Directed?
-    //     );
-    model.agents_smallworld((uint) model("Population Size"), 5, false, .05);
+    model.agents_from_adjlist(
+         "population.txt",         // Filepath
+         model("Population Size"), // Population size
+         0,                        // Lines to skip
+         false                     // Directed?
+         );
+    //model.agents_smallworld((uint) model("Population Size"), 5, false, .05);
  
     // Adding randomly distributed entities, each one with capacity for entity_capacity
     for (size_t r = 0u; r < model("N entities"); ++r)

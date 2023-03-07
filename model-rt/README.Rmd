@@ -53,7 +53,7 @@ rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
 rt_sample <- rt[pick <= 200]
 
 ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
-    geom_point(alpha = .1) +
+    geom_jitter(alpha = .1, height = 0) +
     geom_smooth(method = "loess", se = TRUE) +
     lims(y = c(0, 10))
 
@@ -78,6 +78,7 @@ epicurves_sample <- epicurves[pick <= 200]
 
 epicurves_sample[status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = status), alpha = .1) + 
     geom_smooth(aes(colour = status), method="loess", se = TRUE)
 ```
 

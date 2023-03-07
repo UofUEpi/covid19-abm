@@ -27,16 +27,16 @@ current values are:
 | Prob. hosp. recovers     |     0.5 |
 | Prob. hosp. dies         |     0.5 |
 | Infectiousness           |     0.8 |
-| Infectiousness in entity |     0.5 |
+| Infectiousness in entity |     0.1 |
 | Days                     |    50.0 |
 | Population Size          | 10000.0 |
 | Prevalence               |   100.0 |
 | N ties                   |     5.0 |
-| Sim count                |    50.0 |
+| Sim count                |   100.0 |
 | N entities               |   200.0 |
-| Seed                     |  1545.0 |
-| N interactions           |     5.0 |
-| OMP threads              |     4.0 |
+| Seed                     |    15.0 |
+| N interactions           |    10.0 |
+| OMP threads              |     8.0 |
 
 The full program can be found in the file [main.cpp](main.cpp).
 
@@ -46,7 +46,7 @@ The full program can be found in the file [main.cpp](main.cpp).
 ./main.o
 ```
 
-    ## Starting multiple runs (50) using 4 thread(s)
+    ## Starting multiple runs (100) using 8 thread(s)
     ## _________________________________________________________________________
     ## _________________________________________________________________________
     ## ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| done.
@@ -61,9 +61,9 @@ The full program can be found in the file [main.cpp](main.cpp).
     ## Days (duration)     : 51 (of 50)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 2.00s (50 runs)
-    ## Last run speed      : 4.59 million agents x day / second
-    ## Average run speed   : 11.45 million agents x day / second
+    ## Total elapsed t     : 2.00s (100 runs)
+    ## Last run speed      : 2.15 million agents x day / second
+    ## Average run speed   : 20.29 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -80,33 +80,33 @@ The full program can be found in the file [main.cpp](main.cpp).
     ##  - Gamma shape (infected)   : 7.0000
     ##  - Hospitalization prob.    : 0.1000
     ##  - Infectiousness           : 0.8000
-    ##  - Infectiousness in entity : 0.5000
+    ##  - Infectiousness in entity : 0.1000
     ##  - N entities               : 200.0000
-    ##  - N interactions           : 5.0000
+    ##  - N interactions           : 10.0000
     ##  - N ties                   : 5.0000
-    ##  - OMP threads              : 4.0000
+    ##  - OMP threads              : 8.0000
     ##  - Population Size          : 10000.0000
     ##  - Prevalence               : 100.0000
     ##  - Prob. hosp. dies         : 0.5000
     ##  - Prob. hosp. recovers     : 0.5000
-    ##  - Seed                     : 1545.0000
-    ##  - Sim count                : 50.0000
+    ##  - Seed                     : 15.0000
+    ##  - Sim count                : 100.0000
     ## 
     ## Distribution of the population at time 51:
-    ##  - (0) Susceptible  :  9900 -> 0
+    ##  - (0) Susceptible  :  9900 -> 9618
     ##  - (1) Exposed      :   100 -> 0
     ##  - (2) Infected     :     0 -> 0
     ##  - (3) Hospitalized :     0 -> 0
-    ##  - (4) Recovered    :     0 -> 9431
-    ##  - (5) Deceased     :     0 -> 569
+    ##  - (4) Recovered    :     0 -> 350
+    ##  - (5) Deceased     :     0 -> 32
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   452.87  62.35  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  94.47  24.30  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  31.15  3.74  32.36  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  2.72  2.50  2.22
-    ##  - Recovered     0.00  0.00  0.00  0.00  0.44  0.00
-    ##  - Deceased      0.00  0.00  0.00  0.00  0.00  0.46
+    ##  - Susceptible   0.30  0.02  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  126.41  40.58  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  51.80  6.87  58.67  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  5.50  5.72  5.83
+    ##  - Recovered     0.00  0.00  0.00  0.00  15.48  0.00
+    ##  - Deceased      0.00  0.00  0.00  0.00  0.00  8.64
 
 # Computing reproductive number
 
@@ -123,18 +123,18 @@ rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
 rt_sample <- rt[pick <= 200]
 
 ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
-    geom_point(alpha = .1) +
+    geom_jitter(alpha = .1, height = 0) +
     geom_smooth(method = "loess", se = TRUE) +
     lims(y = c(0, 10))
 ```
 
     ## `geom_smooth()` using formula = 'y ~ x'
 
-    ## Warning: Removed 32 rows containing non-finite values (`stat_smooth()`).
+    ## Warning: Removed 100 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 32 rows containing missing values (`geom_point()`).
+    ## Warning: Removed 100 rows containing missing values (`geom_point()`).
 
-    ## Warning: Removed 1 rows containing missing values (`geom_smooth()`).
+    ## Warning: Removed 23 rows containing missing values (`geom_smooth()`).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 
@@ -160,6 +160,7 @@ epicurves_sample <- epicurves[pick <= 200]
 
 epicurves_sample[status %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = status), alpha = .1) + 
     geom_smooth(aes(colour = status), method="loess", se = TRUE)
 ```
 
@@ -193,11 +194,11 @@ epicurves_end[, .(
     ), by = "status"] |> knitr::kable()
 ```
 
-| status       |     Avg |    50% |     2.5% |    97.5% |
-| :----------- | ------: | -----: | -------: | -------: |
-| Susceptible  | 2383.12 |    0.0 |    0.000 | 8099.200 |
-| Exposed      |  219.98 |    0.0 |    0.000 | 1400.925 |
-| Infected     |   64.32 |    0.0 |    0.000 |  436.675 |
-| Hospitalized |    4.80 |    0.0 |    0.000 |   47.250 |
-| Recovered    | 6960.66 | 9486.5 | 1494.850 | 9525.325 |
-| Deceased     |  367.12 |  487.0 |   66.575 |  533.550 |
+| status       |     Avg |    50% |    2.5% |    97.5% |
+| :----------- | ------: | -----: | ------: | -------: |
+| Susceptible  | 3095.03 |  187.5 |  92.475 | 9639.050 |
+| Exposed      |    2.00 |    0.0 |   0.000 |   14.000 |
+| Infected     |    2.07 |    0.0 |   0.000 |   15.050 |
+| Hospitalized |    0.33 |    0.0 |   0.000 |    3.525 |
+| Recovered    | 6556.59 | 9313.0 | 343.475 | 9413.100 |
+| Deceased     |  343.98 |  477.5 |  13.000 |  522.050 |
