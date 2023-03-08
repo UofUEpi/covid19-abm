@@ -12,11 +12,11 @@ Infectiousness in entity : 0.1
 
 * Global parameters
 Days            : 50
-Population Size : 10000
+Population Size : 5000
 Prevalence      : 100
 N ties          : 5
 Sim count       : 200
-N entities      : 100
+N entities      : 50
 Seed            : 15
 N interactions  : 10
 

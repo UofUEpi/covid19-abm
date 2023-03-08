@@ -2,15 +2,9 @@ library(data.table)
 
 set.seed(7778)
 # This setup yields a mean degree of 25.09
-N_desired       <- 10000
-N_locations     <- ceiling(N_desired/100)
-N_avg_locations <- .5
-
-expected_deg <- function(n, m, v) {
-  (n - 1) * (1 - (2*(1 - 1/m)^v - (1 - 1/m)^(2 * v)) ^ m)
-} 
-
-expected_deg(N_desired, N_locations, N_avg_locations)
+N_desired        <- 5000
+N_locations      <- ceiling(N_desired/100)
+N_ties2locations <- N_desired * 5
 
 toth <- fread("../model-saltlake/data-raw/analysisData.txt")
 
@@ -67,20 +61,18 @@ pop_locations <- merge(
   )
 
 households <- merge(
-  households[,.(household, ego = id)],
-  households[,.(household, alter = id)], 
+  households[, .(household, ego = id)],
+  households[, .(household, alter = id)], 
   allow.cartesian = TRUE
 )[ego != alter]
 
-households <- households[, .(ego = fifelse(ego < alter, ego, alter), alter = fifelse(ego < alter, alter, ego))]
-households <- unique(households)
+households <- households[, .(
+  ego   = fifelse(ego < alter, ego, alter),
+  alter = fifelse(ego < alter, alter, ego)
+  )] |> unique()
 
 # Building ties between individuals --------------------------------------------
-p_visit <- 1 - (1 - 1/N_locations)^N_avg_locations
-
-nvisits <- rbinom(1, size=N_desired * (N_desired - 1)/2, prob = p_visit)
-
-who <- sample.int(n = N_desired, size = N_desired * 5, replace = TRUE)
+who <- sample.int(n = N_desired, size = N_ties2locations, replace = TRUE)
 who <- data.table(id = who)
 who <- who[, .(n = .N), by = "id"]
 setorder(who, id)
@@ -95,10 +87,10 @@ pop_places_ties <- NULL
 for (i in 1:nrow(who)) {
 
   w <- pop_locations[i, sqrt((places$lon - lon)^2 + (places$lat - lat)^2)]
-  w <- sample.int(size = who[i,n], n = N_locations, prob = 1/w)
+  w <- sample.int(size = who[i, n], n = N_locations, prob = 1 / w)
   pop_places_ties <- rbind(
     pop_places_ties,
-    data.table(agent = who[i,id] - 1, place = w - 1)
+    data.table(agent = who[i, id] - 1, place = w - 1)
   )
 
   if (!i %% 200)
@@ -107,14 +99,23 @@ for (i in 1:nrow(who)) {
 }
 
 fwrite(
-  unique(rbind(households)), # Will be connected through entities
+  households, # Will be connected through entities
   file = "population.txt",
   sep = " ", col.names = FALSE
 )
 
 fwrite(
-  unique(pop_places_ties),
+  pop_places_ties,
   file = "agents_entities.txt",
   sep = " ", col.names = FALSE
 )
 
+fwrite(
+  pop_locations,
+  file = "locations_agents.txt"
+)
+
+fwrite(
+  places,
+  file = "locations_entities.txt"
+)

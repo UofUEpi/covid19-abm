@@ -34,16 +34,33 @@ The full program can be found in the file [main.cpp](main.cpp).
 
 # Network data
 
+The following shows the connection network (a sample of 5,000 of the ties.) Agents are connected between them (families) and to entities, with higher chance to entities closer to them.
+
 ```{r netplot, cache = TRUE}
 families <- fread("population.txt")
-entities <- fread("agents_entities.txt")[1:2000]
+entities <- fread("agents_entities.txt")
+
+# Getting positions
+fams_pos <- fread("locations_agents.txt")
+enti_pos <- fread("locations_entities.txt")
+enti_pos[, id := id + max(entities$V1 + 1)]
 
 library(igraph)
+set.seed(1231)
 entities[, V2 := V2 + max(V1) + 1]
-gr <- graph_from_edgelist(as.matrix(entities) + 1)
+gr <- graph_from_edgelist(as.matrix(
+    entities[sample.int(n = .N, size = 5000)]
+    ) + 1)
 
 library(netplot)
-nplot(gr, sample.edges = .5)
+nplot(
+    gr,
+    skip.vertex = TRUE, sample.edges = .5,
+    layout = rbind(
+        as.matrix(fams_pos[, .(lon, lat)]),
+        as.matrix(enti_pos[, .(lon, lat)])
+    ),
+    edge.color = ~ego(alpha = .1) + alter(alpha = .1))
 ```
 
 # Running the model

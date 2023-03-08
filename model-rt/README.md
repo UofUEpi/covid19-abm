@@ -17,67 +17,60 @@ The specific features follow:
 The file [`params.txt`](params.txt) contains the model parameters. The
 current values are:
 
-| Parameter                |   Value |
-| :----------------------- | ------: |
-| Gamma shape (incubation) |     7.0 |
-| Gamma rate (incubation)  |     1.0 |
-| Gamma shape (infected)   |     7.0 |
-| Gamma rate (infected)    |     1.0 |
-| Hospitalization prob.    |     0.1 |
-| Prob. hosp. recovers     |     0.5 |
-| Prob. hosp. dies         |     0.5 |
-| Infectiousness           |     0.8 |
-| Infectiousness in entity |     0.1 |
-| Days                     |    50.0 |
-| Population Size          | 10000.0 |
-| Prevalence               |   100.0 |
-| N ties                   |     5.0 |
-| Sim count                |   200.0 |
-| N entities               |   100.0 |
-| Seed                     |    15.0 |
-| N interactions           |    10.0 |
-| OMP threads              |     8.0 |
+| Parameter                |  Value |
+| :----------------------- | -----: |
+| Gamma shape (incubation) |    7.0 |
+| Gamma rate (incubation)  |    1.0 |
+| Gamma shape (infected)   |    7.0 |
+| Gamma rate (infected)    |    1.0 |
+| Hospitalization prob.    |    0.1 |
+| Prob. hosp. recovers     |    0.5 |
+| Prob. hosp. dies         |    0.5 |
+| Infectiousness           |    0.8 |
+| Infectiousness in entity |    0.1 |
+| Days                     |   50.0 |
+| Population Size          | 5000.0 |
+| Prevalence               |  100.0 |
+| N ties                   |    5.0 |
+| Sim count                |  200.0 |
+| N entities               |   50.0 |
+| Seed                     |   15.0 |
+| N interactions           |   10.0 |
+| OMP threads              |    8.0 |
 
 The full program can be found in the file [main.cpp](main.cpp).
 
 # Network data
 
+The following shows the connection network (a sample of 5,000 of the
+ties.) Agents are connected between them (families) and to entities,
+with higher chance to entities closer to them.
+
 ``` r
 families <- fread("population.txt")
-entities <- fread("agents_entities.txt")[1:2000]
+entities <- fread("agents_entities.txt")
+
+# Getting positions
+fams_pos <- fread("locations_agents.txt")
+enti_pos <- fread("locations_entities.txt")
+enti_pos[, id := id + max(entities$V1 + 1)]
 
 library(igraph)
-```
-
-    ## 
-    ## Attaching package: 'igraph'
-
-    ## The following objects are masked from 'package:stats':
-    ## 
-    ##     decompose, spectrum
-
-    ## The following object is masked from 'package:base':
-    ## 
-    ##     union
-
-``` r
+set.seed(1231)
 entities[, V2 := V2 + max(V1) + 1]
-gr <- graph_from_edgelist(as.matrix(entities) + 1)
+gr <- graph_from_edgelist(as.matrix(
+    entities[sample.int(n = .N, size = 5000)]
+    ) + 1)
 
 library(netplot)
-```
-
-    ## Loading required package: grid
-
-    ## 
-    ## Attaching package: 'netplot'
-
-    ## The following object is masked from 'package:igraph':
-    ## 
-    ##     ego
-
-``` r
-nplot(gr, sample.edges = .5)
+nplot(
+    gr,
+    skip.vertex = TRUE, sample.edges = .5,
+    layout = rbind(
+        as.matrix(fams_pos[, .(lon, lat)]),
+        as.matrix(enti_pos[, .(lon, lat)])
+    ),
+    edge.color = ~ego(alpha = .1) + alter(alpha = .1))
 ```
 
 ![](README_files/figure-gfm/netplot-1.png)<!-- -->
@@ -98,14 +91,14 @@ nplot(gr, sample.edges = .5)
     ## SIMULATION STUDY
     ## 
     ## Name of the model   : (none)
-    ## Population size     : 10000
-    ## Number of entitites : 100
+    ## Population size     : 5000
+    ## Number of entitites : 50
     ## Days (duration)     : 51 (of 50)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 7.00s (200 runs)
-    ## Last run speed      : 1.72 million agents x day / second
-    ## Average run speed   : 13.21 million agents x day / second
+    ## Total elapsed t     : 3.00s (200 runs)
+    ## Last run speed      : 3.06 million agents x day / second
+    ## Average run speed   : 15.06 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -123,11 +116,11 @@ nplot(gr, sample.edges = .5)
     ##  - Hospitalization prob.    : 0.1000
     ##  - Infectiousness           : 0.8000
     ##  - Infectiousness in entity : 0.1000
-    ##  - N entities               : 100.0000
+    ##  - N entities               : 50.0000
     ##  - N interactions           : 10.0000
     ##  - N ties                   : 5.0000
     ##  - OMP threads              : 8.0000
-    ##  - Population Size          : 10000.0000
+    ##  - Population Size          : 5000.0000
     ##  - Prevalence               : 100.0000
     ##  - Prob. hosp. dies         : 0.5000
     ##  - Prob. hosp. recovers     : 0.5000
@@ -135,18 +128,18 @@ nplot(gr, sample.edges = .5)
     ##  - Sim count                : 200.0000
     ## 
     ## Distribution of the population at time 51:
-    ##  - (0) Susceptible  :  9900 -> 201
-    ##  - (1) Exposed      :   100 -> 154
-    ##  - (2) Infected     :     0 -> 86
-    ##  - (3) Hospitalized :     0 -> 8
-    ##  - (4) Recovered    :     0 -> 9055
-    ##  - (5) Deceased     :     0 -> 496
+    ##  - (0) Susceptible  : 4900 -> 82
+    ##  - (1) Exposed      :  100 -> 14
+    ##  - (2) Infected     :    0 -> 10
+    ##  - (3) Hospitalized :    0 -> 0
+    ##  - (4) Recovered    :    0 -> 4639
+    ##  - (5) Deceased     :    0 -> 255
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   0.93  0.07  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  0.87  0.13  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  0.56  0.04  0.40  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  0.33  0.34  0.33
+    ##  - Susceptible   0.92  0.08  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  0.85  0.15  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  0.54  0.05  0.41  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  0.28  0.34  0.38
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Deceased      0.00  0.00  0.00  0.00  0.00  1.00
 
@@ -172,9 +165,9 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 
     ## `geom_smooth()` using formula = 'y ~ x'
 
-    ## Warning: Removed 25 rows containing non-finite values (`stat_smooth()`).
+    ## Warning: Removed 4 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 25 rows containing missing values (`geom_point()`).
+    ## Warning: Removed 4 rows containing missing values (`geom_point()`).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 
@@ -234,11 +227,11 @@ epicurves_end[, .(
     ), by = "status"] |> knitr::kable()
 ```
 
-| status       |      Avg |    50% |     2.5% |    97.5% |
-| :----------- | -------: | -----: | -------: | -------: |
-| Susceptible  |  244.535 |  207.5 |  141.900 |  711.675 |
-| Exposed      |  326.780 |  187.5 |   46.000 | 1989.300 |
-| Infected     |  179.655 |  122.5 |   35.925 |  768.050 |
-| Hospitalized |   19.580 |   16.0 |    2.000 |   61.125 |
-| Recovered    | 8774.900 | 9011.0 | 6157.375 | 9277.225 |
-| Deceased     |  454.550 |  462.0 |  299.925 |  517.175 |
+| status       |      Avg |  50% |     2.5% |    97.5% |
+| :----------- | -------: | ---: | -------: | -------: |
+| Susceptible  |   90.315 |   88 |   61.000 |  130.075 |
+| Exposed      |   41.815 |   30 |    9.925 |  152.275 |
+| Infected     |   26.930 |   21 |    5.000 |   93.175 |
+| Hospitalized |    3.115 |    2 |    0.000 |   11.050 |
+| Recovered    | 4597.450 | 4615 | 4379.650 | 4683.075 |
+| Deceased     |  240.375 |  240 |  202.975 |  273.025 |
