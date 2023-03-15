@@ -1,2 +1,2 @@
 update-local:
-	rsync -avz ../world-epi/epiworld.hpp epiworld.hpp
+	rsync -avz ../../development/epiworld/epiworld.hpp epiworld.hpp

@@ -36,7 +36,7 @@ The full program can be found in the file [main.cpp](main.cpp).
 
 The following shows the connection network (a sample of 5,000 of the ties.) Agents are connected between them (families) and to entities, with higher chance to entities closer to them.
 
-```{r netplot, cache = TRUE}
+```{r netplot, cache = TRUE, eval=FALSE}
 families <- fread("population.txt")
 entities <- fread("agents_entities.txt")
 
@@ -107,28 +107,28 @@ epicurves[, pick := order(runif(.N)), by = .(date, nvariants)]
 
 epicurves_sample <- epicurves[pick <= 200]
 
-epicurves_sample[status %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    geom_jitter(aes(colour = status), alpha = .1) + 
-    geom_smooth(aes(colour = status), method="loess", se = TRUE)
+    geom_jitter(aes(colour = state), alpha = .1) + 
+    geom_smooth(aes(colour = state), method="loess", se = TRUE)
 ```
 
 ```{r totals}
-epicurves_sample[!status %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[!state %in% c("Exposed", "Infected", "Hospitalized")] |>
     ggplot(aes(x = date, y = counts)) +
-    geom_smooth(aes(colour = status), method = "loess", se = TRUE)
+    geom_smooth(aes(colour = state), method = "loess", se = TRUE)
     # geom_jitter(aes(colour = status), alpha = .1)
 ```
 
-Status at the end of the simulation
+States at the end of the simulation
 
-```{r status-at-the-end}
+```{r state-at-the-end}
 epicurves_end <- epicurves[date == max(date)]
 epicurves_end[, .(
     Avg     = mean(counts),
     `50%`   = quantile(counts, probs = .5),
     `2.5%`  = quantile(counts, probs = .025),
     `97.5%` = quantile(counts, probs = .975)
-    ), by = "status"] |> knitr::kable()
+    ), by = "state"] |> knitr::kable()
 ```
 
