@@ -100,8 +100,8 @@ nplot(
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
     ## Total elapsed t     : 2.00s (200 runs)
-    ## Last run speed      : 3.63 million agents x day / second
-    ## Average run speed   : 20.29 million agents x day / second
+    ## Last run speed      : 4.13 million agents x day / second
+    ## Average run speed   : 23.92 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -204,6 +204,10 @@ ggplot(gentime, aes(x = source_exposure_date, y = gtime)) +
 
 ![](README_files/figure-gfm/gentime-1.png)<!-- -->
 
+``` r
+fwrite(gentime, "generation_time.csv")
+```
+
 # New daily cases
 
 Daily cases can be informed through the transition matrix.
@@ -235,6 +239,14 @@ transition[, ttrans := fifelse(
         )
     )
     )]
+
+# File with transitions
+transition_file <- transition[from != to]
+transition_file <- 
+    transition_file[, transition := paste0(from, "_", to)] |>
+        dcast(id + date ~ transition, value.var = "counts")
+
+fwrite(transition_file, "transitions.csv")
 
 transition <- transition[ttrans != "(other)"]
 
