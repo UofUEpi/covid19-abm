@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     epimodels::ModelSEIRD<> model("params.txt", "Covid19");
 
     int nthreads = static_cast<int>(model("OMP threads"));
-    #ifdef __OPENMP
+    #ifdef _OPENMP
     omp_set_num_threads(nthreads);
     #else
     nthreads = 1;
@@ -39,11 +39,20 @@ int main(int argc, char* argv[])
         false, // bool tool_info,
         false, // bool tool_hist,
         true , // bool transmission,
-        false, // bool transition,
-        true   // bool reproductive
+        true,  // bool transition,
+        true,  // bool reproductive,
+        true   // bool generation time
     );
 
-    model.run_multiple(model("Days"), model("Sim count"), model("Seed"), sav, true, true, nthreads);
+    model.run_multiple(
+        model("Days"),
+        model("Sim count"),
+        model("Seed"),
+        sav,
+        true,
+        true,
+        nthreads
+        );
 
     model.print();
 

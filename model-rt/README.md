@@ -4,21 +4,21 @@
 This is a variation of a SEIRD model, which includes hospitalizations.
 The specific features follow:
 
-- Two types of network connections: families and bi-partite through
-  entities.
-- Individuals are clustered in groups of five.
-- Each entity houses 100 individuals.
-- Transmission can happen between family members or between entity
-  members.
-- At each step, the model draws 5 entity members per susceptible
-  individual. This represents the chance of direct contact.
-- Only infected non-hospitalized individuals can transmit the disease.
+  - Two types of network connections: families and bi-partite through
+    entities.
+  - Individuals are clustered in groups of five.
+  - Each entity houses 100 individuals.
+  - Transmission can happen between family members or between entity
+    members.
+  - At each step, the model draws 5 entity members per susceptible
+    individual. This represents the chance of direct contact.
+  - Only infected non-hospitalized individuals can transmit the disease.
 
 The file [`params.txt`](params.txt) contains the model parameters. The
 current values are:
 
 | Parameter                |  Value |
-|:-------------------------|-------:|
+| :----------------------- | -----: |
 | Gamma shape (incubation) |    7.0 |
 | Gamma rate (incubation)  |    1.0 |
 | Gamma shape (infected)   |    7.0 |
@@ -65,13 +65,18 @@ gr <- graph_from_edgelist(as.matrix(
 library(netplot)
 nplot(
     gr,
-    skip.vertex = TRUE, sample.edges = .5,
+    skip.vertex = TRUE, sample.edges = .25,
     layout = rbind(
         as.matrix(fams_pos[, .(lon, lat)]),
         as.matrix(enti_pos[, .(lon, lat)])
     ),
-    edge.color = ~ego(alpha = .1) + alter(alpha = .1))
+    edge.color = ~ego(alpha = .1) + alter(alpha = 0),
+    vertex.color = "yellow",
+    bg.col = "black"
+    )
 ```
+
+![](README_files/figure-gfm/netplot-1.png)<!-- -->
 
 # Running the model
 
@@ -79,7 +84,7 @@ nplot(
 ./main.o
 ```
 
-    ## Starting multiple runs (200) using 1 thread(s)
+    ## Starting multiple runs (200) using 8 thread(s)
     ## _________________________________________________________________________
     ## _________________________________________________________________________
     ## ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| done.
@@ -94,9 +99,9 @@ nplot(
     ## Days (duration)     : 50 (of 50)
     ## Number of variants  : 1
     ## Last run elapsed t  : 0.00s
-    ## Total elapsed t     : 10.00s (200 runs)
-    ## Last run speed      : 3.97 million agents x day / second
-    ## Average run speed   : 4.69 million agents x day / second
+    ## Total elapsed t     : 2.00s (200 runs)
+    ## Last run speed      : 3.63 million agents x day / second
+    ## Average run speed   : 20.29 million agents x day / second
     ## Rewiring            : off
     ## 
     ## Virus(es):
@@ -126,18 +131,18 @@ nplot(
     ##  - Sim count                : 200.0000
     ## 
     ## Distribution of the population at time 50:
-    ##  - (0) Susceptible  : 4900 -> 113
-    ##  - (1) Exposed      :  100 -> 239
-    ##  - (2) Infected     :    0 -> 150
-    ##  - (3) Hospitalized :    0 -> 11
-    ##  - (4) Recovered    :    0 -> 4254
-    ##  - (5) Deceased     :    0 -> 233
+    ##  - (0) Susceptible  : 4900 -> 82
+    ##  - (1) Exposed      :  100 -> 14
+    ##  - (2) Infected     :    0 -> 10
+    ##  - (3) Hospitalized :    0 -> 0
+    ##  - (4) Recovered    :    0 -> 4639
+    ##  - (5) Deceased     :    0 -> 255
     ## 
     ## Transition Probabilities:
-    ##  - Susceptible   0.93  0.07  0.00  0.00  0.00  0.00
-    ##  - Exposed       0.00  0.88  0.12  0.00  0.00  0.00
-    ##  - Infected      0.00  0.00  0.52  0.05  0.43  0.00
-    ##  - Hospitalized  0.00  0.00  0.00  0.36  0.30  0.34
+    ##  - Susceptible   0.92  0.08  0.00  0.00  0.00  0.00
+    ##  - Exposed       0.00  0.85  0.15  0.00  0.00  0.00
+    ##  - Infected      0.00  0.00  0.54  0.05  0.41  0.00
+    ##  - Hospitalized  0.00  0.00  0.00  0.28  0.34  0.38
     ##  - Recovered     0.00  0.00  0.00  0.00  1.00  0.00
     ##  - Deceased      0.00  0.00  0.00  0.00  0.00  1.00
 
@@ -161,11 +166,11 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
     lims(y = c(0, 10))
 ```
 
-    ## `geom_smooth()` using formula = 'y ~ x'
+    ## `geom_smooth()` using formula 'y ~ x'
 
-    ## Warning: Removed 3 rows containing non-finite values (`stat_smooth()`).
+    ## Warning: Removed 4 rows containing non-finite values (stat_smooth).
 
-    ## Warning: Removed 3 rows containing missing values (`geom_point()`).
+    ## Warning: Removed 4 rows containing missing values (geom_point).
 
 ![](README_files/figure-gfm/repnum-1.png)<!-- -->
 
@@ -173,6 +178,78 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 setorder(rt, id, source_exposure_date, rt)
 fwrite(rt, "reproductive_numbers.csv")
 ```
+
+# Generation time
+
+``` r
+gentime <- list.files("saves", pattern = "gene", full.names = TRUE)
+gentime <- lapply(seq_along(gentime), \(i) {
+    tmp <- cbind(id = i, fread(gentime[i]))
+    tmp[gentime > 0]
+}) |> rbindlist()
+
+gentime <- gentime[, .(gtime = mean(gentime)), by = .(id, source_exposure_date)]
+
+ggplot(gentime, aes(x = source_exposure_date, y = gtime)) +
+    geom_jitter(alpha = .1, height = 0) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
+```
+
+    ## `geom_smooth()` using formula 'y ~ x'
+
+    ## Warning: Removed 63 rows containing non-finite values (stat_smooth).
+
+    ## Warning: Removed 63 rows containing missing values (geom_point).
+
+![](README_files/figure-gfm/gentime-1.png)<!-- -->
+
+# New daily cases
+
+Daily cases can be informed through the transition matrix.
+
+``` r
+transition <- list.files("saves", pattern = "transit", full.names = TRUE)
+transition <- lapply(seq_along(transition), \(i) {
+    cbind(id = i, fread(transition[i]))
+}) |> rbindlist()
+
+transition[, ttrans := fifelse(
+    from == "Susceptible" & to == "Exposed",
+    "New exposures",
+    fifelse(
+        from == "Exposed" & to == "Infected",
+        "New infections",
+        fifelse(
+            (from == "Infected" & to == "Recovered") | (from == "Hospitalized" & to == "Recovered"),
+            "New recovered",
+            fifelse(
+                from == "Infected" & to == "Hospitalized",
+                "New hospitalized",
+                fifelse(
+                    from == "Hospitalized" & to == "Deceased",
+                    "New deaths",
+                    "(other)"
+                )
+            )
+        )
+    )
+    )]
+
+transition <- transition[ttrans != "(other)"]
+
+# sampling
+transition[, pick := order(runif(.N)), by = .(date, ttrans)]
+transition <- transition[pick <= 100]
+transition |>
+    ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = ttrans), alpha = .1) + 
+    geom_smooth(aes(colour = ttrans), method="loess", se = TRUE)
+```
+
+    ## `geom_smooth()` using formula 'y ~ x'
+
+![](README_files/figure-gfm/transi-1.png)<!-- -->
 
 # Epi curves
 
@@ -195,7 +272,7 @@ epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
     geom_smooth(aes(colour = state), method="loess", se = TRUE)
 ```
 
-    ## `geom_smooth()` using formula = 'y ~ x'
+    ## `geom_smooth()` using formula 'y ~ x'
 
 ![](README_files/figure-gfm/transitions-1.png)<!-- -->
 
@@ -205,7 +282,7 @@ epicurves_sample[!state %in% c("Exposed", "Infected", "Hospitalized")] |>
     geom_smooth(aes(colour = state), method = "loess", se = TRUE)
 ```
 
-    ## `geom_smooth()` using formula = 'y ~ x'
+    ## `geom_smooth()` using formula 'y ~ x'
 
 ![](README_files/figure-gfm/totals-1.png)<!-- -->
 
@@ -226,10 +303,10 @@ epicurves_end[, .(
 ```
 
 | state        |      Avg |  50% |     2.5% |    97.5% |
-|:-------------|---------:|-----:|---------:|---------:|
-| Susceptible  |   90.450 |   88 |   63.975 |  130.075 |
-| Exposed      |   40.905 |   30 |   10.000 |  146.150 |
-| Infected     |   26.505 |   21 |    5.000 |   82.275 |
-| Hospitalized |    3.130 |    2 |    0.000 |   12.025 |
-| Recovered    | 4598.045 | 4615 | 4397.200 | 4681.050 |
-| Deceased     |  240.965 |  240 |  208.950 |  274.000 |
+| :----------- | -------: | ---: | -------: | -------: |
+| Susceptible  |   90.315 |   88 |   61.000 |  130.075 |
+| Exposed      |   41.815 |   30 |    9.925 |  152.275 |
+| Infected     |   26.930 |   21 |    5.000 |   93.175 |
+| Hospitalized |    3.115 |    2 |    0.000 |   11.050 |
+| Recovered    | 4597.450 | 4615 | 4379.650 | 4683.075 |
+| Deceased     |  240.375 |  240 |  202.975 |  273.025 |

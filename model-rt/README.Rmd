@@ -36,7 +36,7 @@ The full program can be found in the file [main.cpp](main.cpp).
 
 The following shows the connection network (a sample of 5,000 of the ties.) Agents are connected between them (families) and to entities, with higher chance to entities closer to them.
 
-```{r netplot, cache = TRUE, eval=FALSE}
+```{r netplot, cache = TRUE}
 families <- fread("population.txt")
 entities <- fread("agents_entities.txt")
 
@@ -55,12 +55,15 @@ gr <- graph_from_edgelist(as.matrix(
 library(netplot)
 nplot(
     gr,
-    skip.vertex = TRUE, sample.edges = .5,
+    skip.vertex = TRUE, sample.edges = .25,
     layout = rbind(
         as.matrix(fams_pos[, .(lon, lat)]),
         as.matrix(enti_pos[, .(lon, lat)])
     ),
-    edge.color = ~ego(alpha = .1) + alter(alpha = .1))
+    edge.color = ~ego(alpha = .1) + alter(alpha = 0),
+    vertex.color = "yellow",
+    bg.col = "black"
+    )
 ```
 
 # Running the model
@@ -90,6 +93,67 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 
 setorder(rt, id, source_exposure_date, rt)
 fwrite(rt, "reproductive_numbers.csv")
+```
+
+# Generation time
+
+```{r gentime}
+gentime <- list.files("saves", pattern = "gene", full.names = TRUE)
+gentime <- lapply(seq_along(gentime), \(i) {
+    tmp <- cbind(id = i, fread(gentime[i]))
+    tmp[gentime > 0]
+}) |> rbindlist()
+
+gentime <- gentime[, .(gtime = mean(gentime)), by = .(id, source_exposure_date)]
+
+ggplot(gentime, aes(x = source_exposure_date, y = gtime)) +
+    geom_jitter(alpha = .1, height = 0) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
+```
+
+# New daily cases
+
+Daily cases can be informed through the transition matrix.
+
+```{r transi}
+transition <- list.files("saves", pattern = "transit", full.names = TRUE)
+transition <- lapply(seq_along(transition), \(i) {
+    cbind(id = i, fread(transition[i]))
+}) |> rbindlist()
+
+transition[, ttrans := fifelse(
+    from == "Susceptible" & to == "Exposed",
+    "New exposures",
+    fifelse(
+        from == "Exposed" & to == "Infected",
+        "New infections",
+        fifelse(
+            (from == "Infected" & to == "Recovered") | (from == "Hospitalized" & to == "Recovered"),
+            "New recovered",
+            fifelse(
+                from == "Infected" & to == "Hospitalized",
+                "New hospitalized",
+                fifelse(
+                    from == "Hospitalized" & to == "Deceased",
+                    "New deaths",
+                    "(other)"
+                )
+            )
+        )
+    )
+    )]
+
+transition <- transition[ttrans != "(other)"]
+
+# sampling
+transition[, pick := order(runif(.N)), by = .(date, ttrans)]
+transition <- transition[pick <= 100]
+transition |>
+    ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = ttrans), alpha = .1) + 
+    geom_smooth(aes(colour = ttrans), method="loess", se = TRUE)
+
 ```
 
 # Epi curves
