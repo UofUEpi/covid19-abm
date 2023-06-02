@@ -1,5 +1,5 @@
 ---
-output: github_document
+format: gfm
 ---
 
 ```{r setup, echo = FALSE}
@@ -9,62 +9,17 @@ library(ggplot2)
 
 # Description of the model
 
-This is a variation of a SEIRD model, which includes hospitalizations. The specific features follow:
+This is a variation of a SEIRD model, which includes hospitalisations. The specific features follow:
 
 - Two types of network connections: families and bi-partite through entities.
 - Individuals are clustered in groups of five.
 - Each entity houses 100 individuals.
 - Transmission can happen between family members or between entity members.
-- At each step, the model draws 5 entity members per susceptible individual. This represents the chance of direct contact.
+- The model draws five entity members per susceptible individual at each step. This represents the chance of direct contact.
 - Only infected non-hospitalized individuals can transmit the disease.
-
-The file [`params.txt`](params.txt) contains the model parameters. The current values are:
-
-```{r listing-params, echo = FALSE}
-params <- readLines("params.txt", warn = FALSE)
-params <- params[grepl("^[^*]", params)]
-params <- data.frame(
-    Parameter = gsub("\\s*[:].+", "", params),
-    Value     = as.numeric(gsub("^[^:]+[:]", "", params))
-)
-knitr::kable(params, row.names = FALSE)
-```
 
 The full program can be found in the file [main.cpp](main.cpp).
 
-# Network data
-
-The following shows the connection network (a sample of 5,000 of the ties.) Agents are connected between them (families) and to entities, with higher chance to entities closer to them.
-
-```{r netplot, cache = TRUE}
-families <- fread("population.txt")
-entities <- fread("agents_entities.txt")
-
-# Getting positions
-fams_pos <- fread("locations_agents.txt")
-enti_pos <- fread("locations_entities.txt")
-enti_pos[, id := id + max(entities$V1 + 1)]
-
-library(igraph)
-set.seed(1231)
-entities[, V2 := V2 + max(V1) + 1]
-gr <- graph_from_edgelist(as.matrix(
-    entities[sample.int(n = .N, size = 5000)]
-    ) + 1)
-
-library(netplot)
-nplot(
-    gr,
-    skip.vertex = TRUE, sample.edges = .25,
-    layout = rbind(
-        as.matrix(fams_pos[, .(lon, lat)]),
-        as.matrix(enti_pos[, .(lon, lat)])
-    ),
-    edge.color = ~ego(alpha = .1) + alter(alpha = 0),
-    vertex.color = "yellow",
-    bg.col = "black"
-    )
-```
 
 # Running the model
 
