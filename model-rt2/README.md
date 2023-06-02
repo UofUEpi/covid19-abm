@@ -37,9 +37,9 @@ The full program can be found in the file [main.cpp](main.cpp).
     Days (duration)     : 100 (of 100)
     Number of variants  : 1
     Last run elapsed t  : 0.00s
-    Total elapsed t     : 14.00s (200 runs)
-    Last run speed      : 10.08 million agents x day / second
-    Average run speed   : 28.53 million agents x day / second
+    Total elapsed t     : 15.00s (200 runs)
+    Last run speed      : 9.04 million agents x day / second
+    Average run speed   : 26.57 million agents x day / second
     Rewiring            : off
 
     Global actions:
@@ -82,6 +82,7 @@ setorder(rt, source_exposure_date)
 
 rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
 rt_sample <- rt[pick <= 200]
+rt[, pick := NULL]
 
 ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
     geom_jitter(alpha = .1, height = 0) +

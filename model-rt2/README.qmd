@@ -40,6 +40,7 @@ setorder(rt, source_exposure_date)
 
 rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
 rt_sample <- rt[pick <= 200]
+rt[, pick := NULL]
 
 ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
     geom_jitter(alpha = .1, height = 0) +
