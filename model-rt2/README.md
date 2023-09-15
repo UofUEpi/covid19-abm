@@ -27,19 +27,20 @@ The full program can be found in the file [main.cpp](main.cpp).
     _________________________________________________________________________
     ||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||| done.
      done.
-
+    ________________________________________________________________________________
     ________________________________________________________________________________
     SIMULATION STUDY
 
     Name of the model   : Susceptible-Exposed-Infected-Removed (SEIR) (connected)
     Population size     : 20000
+    Agents' data        : (none)
     Number of entities  : 0
     Days (duration)     : 100 (of 100)
-    Number of variants  : 1
+    Number of viruses   : 1
     Last run elapsed t  : 0.00s
     Total elapsed t     : 15.00s (200 runs)
-    Last run speed      : 9.04 million agents x day / second
-    Average run speed   : 26.57 million agents x day / second
+    Last run speed      : 4.60 million agents x day / second
+    Average run speed   : 25.59 million agents x day / second
     Rewiring            : off
 
     Global actions:
@@ -200,7 +201,7 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
 fwrite(epicurves, "epicurves.csv")
 
 # Samlping
-epicurves[, pick := order(runif(.N)), by = .(date, nvariants)]
+epicurves[, pick := order(runif(.N)), by = .(date, nviruses)]
 
 epicurves_sample <- epicurves[pick <= 200]
 

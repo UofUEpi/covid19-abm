@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
     epimodels::ModelSEIRCONN<> model(
         "model-rt2",
         2e4,    // Population size
-        0.001,   // Initial infected fraction
+        0.001,  // Initial infected fraction
         2.0,    // Contact Rate
         0.3,    // Transmission prob
         7.0,    // Avg incubation

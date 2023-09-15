@@ -133,7 +133,7 @@ epicurves <- lapply(seq_along(epicurves), \(i) {
 fwrite(epicurves, "epicurves.csv")
 
 # Samlping
-epicurves[, pick := order(runif(.N)), by = .(date, nvariants)]
+epicurves[, pick := order(runif(.N)), by = .(date, nviruses)]
 
 epicurves_sample <- epicurves[pick <= 200]
 
