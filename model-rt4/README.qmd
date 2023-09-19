@@ -28,6 +28,8 @@ The second part of the code creates an instance of the `ModelSEIRCONN` class, na
 
 # Running the model
 
+In the following example, we change the transmission rate to be a function of whether an individual becomes isolated. To do this, at the beginning, we randomly assign a 0/1 value and define the transmission rate as a function of this value. 
+
 ```{r}
 #| label: build
 #| cache: true
@@ -55,23 +57,17 @@ set.seed(331)
 isolate <- cbind(1, as.numeric(runif(n) < (1 - asymrate)))
 set_agents_data(mymodel, isolate)
 
-# Adding isolation as a tool
-isolate_fun <- tool_fun_logit(
+# Creating the function for setting the probability of transmission
+fun <- virus_fun_logit(
   vars = c(0L, 1L),
   coefs = c(-10, dlogis(trate)),
   mymodel
   )
 
-isolate <- tool(
-  "Isolate",
-  susceptibility_reduction = 0, 
-  transmission_reduction = 0,
-  recovery_enhancer = 0,
-  death_reduction = 0
-  )
-set_transmission_reduction_fun(isolate, mymodel, isolate_fun)
-
-add_tool_n(mymodel, isolate, n)
+# Changing the transmission probability to be a function of the isolated
+# population
+get_virus(mymodel, 0) |>
+  set_prob_infecting_fun(mymodel, fun)
 ```
 
 ```{r}

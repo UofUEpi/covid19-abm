@@ -24,6 +24,11 @@ parameters defined above.
 
 # Running the model
 
+In the following example, we change the transmission rate to be a
+function of whether an individual becomes isolated. To do this, at the
+beginning, we randomly assign a 0/1 value and define the transmission
+rate as a function of this value.
+
 ``` r
 # Reading in parameters
 n      <- 2e4      # Population size
@@ -49,32 +54,17 @@ set.seed(331)
 isolate <- cbind(1, as.numeric(runif(n) < (1 - asymrate)))
 set_agents_data(mymodel, isolate)
 
-# Adding isolation as a tool
-isolate_fun <- tool_fun_logit(
+# Creating the function for setting the probability of transmission
+fun <- virus_fun_logit(
   vars = c(0L, 1L),
   coefs = c(-10, dlogis(trate)),
   mymodel
   )
 
-isolate <- tool(
-  "Isolate",
-  susceptibility_reduction = 0, 
-  transmission_reduction = 0,
-  recovery_enhancer = 0,
-  death_reduction = 0
-  )
-set_transmission_reduction_fun(isolate, mymodel, isolate_fun)
-```
-
-    Tool           : Isolate
-    Id             : (empty)
-    state_init    : -99
-    state_post    : -99
-    queue_init     : 0
-    queue_post     : 0
-
-``` r
-add_tool_n(mymodel, isolate, n)
+# Changing the transmission probability to be a function of the isolated
+# population
+get_virus(mymodel, 0) |>
+  set_prob_infecting_fun(mymodel, fun)
 ```
 
 ``` r
@@ -113,9 +103,9 @@ summary(mymodel)
     Days (duration)     : 100 (of 100)
     Number of viruses   : 1
     Last run elapsed t  : 0.00s
-    Total elapsed t     : 17.00s (200 runs)
-    Last run speed      : 3.04 million agents x day / second
-    Average run speed   : 23.46 million agents x day / second
+    Total elapsed t     : 15.00s (200 runs)
+    Last run speed      : 3.77 million agents x day / second
+    Average run speed   : 25.84 million agents x day / second
     Rewiring            : off
 
     Global actions:
@@ -125,7 +115,7 @@ summary(mymodel)
      - SEIR with test (baseline prevalence: 0.10%)
 
     Tool(s):
-     - Isolate (baseline prevalence: 20000 seeds)
+     (none)
 
     Model parameters:
      - Avg. Incubation days : 7.0000
@@ -134,15 +124,15 @@ summary(mymodel)
      - Prob. Transmission   : 0.3000
 
     Distribution of the population at time 100:
-      - (0) Susceptible : 19980 -> 1313
-      - (1) Exposed     :    20 -> 791
-      - (2) Infected    :     0 -> 1479
-      - (3) Recovered   :     0 -> 16417
+      - (0) Susceptible : 19980 -> 19980
+      - (1) Exposed     :    20 -> 0
+      - (2) Infected    :     0 -> 0
+      - (3) Recovered   :     0 -> 20
 
     Transition Probabilities:
-     - Susceptible  0.97  0.03  0.00  0.00
-     - Exposed      0.00  0.86  0.14  0.00
-     - Infected     0.00  0.00  0.86  0.14
+     - Susceptible  1.00  0.00  0.00  0.00
+     - Exposed      0.00  0.81  0.19  0.00
+     - Infected     0.00  0.00  0.88  0.12
      - Recovered    0.00  0.00  0.00  1.00
 
 ``` r
@@ -173,9 +163,45 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-    Warning: Removed 9 rows containing non-finite values (`stat_smooth()`).
+    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
+    : span too small.  fewer data values than degrees of freedom.
 
-    Warning: Removed 9 rows containing missing values (`geom_point()`).
+    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
+    : pseudoinverse used at -0.07
+
+    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
+    : neighborhood radius 11.07
+
+    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
+    : reciprocal condition number 0
+
+    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
+    : There are other near singularities as well. 197.96
+
+    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
+    else if (is.data.frame(newdata))
+    as.matrix(model.frame(delete.response(terms(object)), : span too small.  fewer
+    data values than degrees of freedom.
+
+    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
+    else if (is.data.frame(newdata))
+    as.matrix(model.frame(delete.response(terms(object)), : pseudoinverse used at
+    -0.07
+
+    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
+    else if (is.data.frame(newdata))
+    as.matrix(model.frame(delete.response(terms(object)), : neighborhood radius
+    11.07
+
+    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
+    else if (is.data.frame(newdata))
+    as.matrix(model.frame(delete.response(terms(object)), : reciprocal condition
+    number 0
+
+    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
+    else if (is.data.frame(newdata))
+    as.matrix(model.frame(delete.response(terms(object)), : There are other near
+    singularities as well. 197.96
 
 ![](README_files/figure-commonmark/repnum-1.png)
 
@@ -204,12 +230,6 @@ ggplot(gentime_sample, aes(x = source_exposure_date, y = gtime)) +
     geom_smooth(method = "loess", se = TRUE) +
     lims(y = c(0, 10))
 ```
-
-    `geom_smooth()` using formula = 'y ~ x'
-
-    Warning: Removed 295 rows containing non-finite values (`stat_smooth()`).
-
-    Warning: Removed 295 rows containing missing values (`geom_point()`).
 
 ![](README_files/figure-commonmark/gentime-1.png)
 
@@ -319,11 +339,11 @@ epicurves_end[, .(
     ), by = "state"] |> knitr::kable()
 ```
 
-| state       |       Avg |     50% |      2.5% |    97.5% |
-|:------------|----------:|--------:|----------:|---------:|
-| Susceptible |  1080.845 |  1037.5 |   870.775 |  1635.15 |
-| Exposed     |   447.765 |   382.0 |   175.825 |  1330.80 |
-| Infected    |   911.385 |   840.5 |   416.875 |  2125.30 |
-| Recovered   | 17560.005 | 17771.5 | 14857.075 | 18537.15 |
+| state       |      Avg |   50% |  2.5% | 97.5% |
+|:------------|---------:|------:|------:|------:|
+| Susceptible | 19979.99 | 19980 | 19980 | 19980 |
+| Exposed     |     0.00 |     0 |     0 |     0 |
+| Infected    |     0.00 |     0 |     0 |     0 |
+| Recovered   |    20.01 |    20 |    20 |    20 |
 
 [^1]: The description of the model was generated by GitHub copilot
