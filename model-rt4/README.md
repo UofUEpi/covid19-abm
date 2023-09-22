@@ -35,6 +35,7 @@ n      <- 2e4      # Population size
 preval <- 0.001    # Initial infected fraction
 crate  <- 2.0      # Contact Rate
 trate  <- 0.3      # Transmission prob
+trate_a <- 0.1     # Transmission prob asymptomatic
 incu   <- 7.0      # Avg incubation
 rrate  <- 1.0/7.0  # Recovery rate
 asymrate <- .3     # Fraction of asymptomatic
@@ -57,7 +58,7 @@ set_agents_data(mymodel, isolate)
 # Creating the function for setting the probability of transmission
 fun <- virus_fun_logit(
   vars = c(0L, 1L),
-  coefs = c(-10, dlogis(trate)),
+  coefs = c(qlogis(trate), qlogis(trate_a) - qlogis(trate)),
   mymodel
   )
 
@@ -103,9 +104,9 @@ summary(mymodel)
     Days (duration)     : 100 (of 100)
     Number of viruses   : 1
     Last run elapsed t  : 0.00s
-    Total elapsed t     : 15.00s (200 runs)
-    Last run speed      : 3.77 million agents x day / second
-    Average run speed   : 25.84 million agents x day / second
+    Total elapsed t     : 16.00s (200 runs)
+    Last run speed      : 3.20 million agents x day / second
+    Average run speed   : 24.33 million agents x day / second
     Rewiring            : off
 
     Global actions:
@@ -124,15 +125,15 @@ summary(mymodel)
      - Prob. Transmission   : 0.3000
 
     Distribution of the population at time 100:
-      - (0) Susceptible : 19980 -> 19980
-      - (1) Exposed     :    20 -> 0
-      - (2) Infected    :     0 -> 0
-      - (3) Recovered   :     0 -> 20
+      - (0) Susceptible : 19980 -> 14999
+      - (1) Exposed     :    20 -> 1292
+      - (2) Infected    :     0 -> 957
+      - (3) Recovered   :     0 -> 2752
 
     Transition Probabilities:
      - Susceptible  1.00  0.00  0.00  0.00
-     - Exposed      0.00  0.81  0.19  0.00
-     - Infected     0.00  0.00  0.88  0.12
+     - Exposed      0.00  0.86  0.14  0.00
+     - Infected     0.00  0.00  0.83  0.17
      - Recovered    0.00  0.00  0.00  1.00
 
 ``` r
@@ -163,45 +164,11 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
-    : span too small.  fewer data values than degrees of freedom.
+    Warning: Removed 2 rows containing non-finite values (`stat_smooth()`).
 
-    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
-    : pseudoinverse used at -0.07
+    Warning: Removed 2 rows containing missing values (`geom_point()`).
 
-    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
-    : neighborhood radius 11.07
-
-    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
-    : reciprocal condition number 0
-
-    Warning in simpleLoess(y, x, w, span, degree = degree, parametric = parametric,
-    : There are other near singularities as well. 197.96
-
-    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
-    else if (is.data.frame(newdata))
-    as.matrix(model.frame(delete.response(terms(object)), : span too small.  fewer
-    data values than degrees of freedom.
-
-    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
-    else if (is.data.frame(newdata))
-    as.matrix(model.frame(delete.response(terms(object)), : pseudoinverse used at
-    -0.07
-
-    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
-    else if (is.data.frame(newdata))
-    as.matrix(model.frame(delete.response(terms(object)), : neighborhood radius
-    11.07
-
-    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
-    else if (is.data.frame(newdata))
-    as.matrix(model.frame(delete.response(terms(object)), : reciprocal condition
-    number 0
-
-    Warning in predLoess(object$y, object$x, newx = if (is.null(newdata)) object$x
-    else if (is.data.frame(newdata))
-    as.matrix(model.frame(delete.response(terms(object)), : There are other near
-    singularities as well. 197.96
+    Warning: Removed 2 rows containing missing values (`geom_smooth()`).
 
 ![](README_files/figure-commonmark/repnum-1.png)
 
@@ -230,6 +197,12 @@ ggplot(gentime_sample, aes(x = source_exposure_date, y = gtime)) +
     geom_smooth(method = "loess", se = TRUE) +
     lims(y = c(0, 10))
 ```
+
+    `geom_smooth()` using formula = 'y ~ x'
+
+    Warning: Removed 494 rows containing non-finite values (`stat_smooth()`).
+
+    Warning: Removed 494 rows containing missing values (`geom_point()`).
 
 ![](README_files/figure-commonmark/gentime-1.png)
 
@@ -303,7 +276,7 @@ epicurves[, pick := order(runif(.N)), by = .(date, nviruses)]
 
 epicurves_sample <- epicurves[pick <= 200]
 
-epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[state %in% c("Exposed", "Infected", "Recovered")] |>
     ggplot(aes(x = date, y = counts)) +
     geom_jitter(aes(colour = state), alpha = .1) + 
     geom_smooth(aes(colour = state), method="loess", se = TRUE)
@@ -314,7 +287,7 @@ epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
 ![](README_files/figure-commonmark/transitions-1.png)
 
 ``` r
-epicurves_sample[!state %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[!state %in% c("Exposed", "Infected", "Recovered")] |>
     ggplot(aes(x = date, y = counts)) +
     geom_smooth(aes(colour = state), method = "loess", se = TRUE)
 ```
@@ -339,11 +312,11 @@ epicurves_end[, .(
     ), by = "state"] |> knitr::kable()
 ```
 
-| state       |      Avg |   50% |  2.5% | 97.5% |
-|:------------|---------:|------:|------:|------:|
-| Susceptible | 19979.99 | 19980 | 19980 | 19980 |
-| Exposed     |     0.00 |     0 |     0 |     0 |
-| Infected    |     0.00 |     0 |     0 |     0 |
-| Recovered   |    20.01 |    20 |    20 |    20 |
+| state       |      Avg |    50% |     2.5% |     97.5% |
+|:------------|---------:|-------:|---------:|----------:|
+| Susceptible | 9915.370 | 9662.5 | 7034.675 | 14117.050 |
+| Exposed     | 1871.255 | 1899.0 | 1475.150 |  2052.275 |
+| Infected    | 1745.905 | 1805.0 | 1153.850 |  1966.100 |
+| Recovered   | 6467.470 | 6539.0 | 3118.400 |  9261.400 |
 
 [^1]: The description of the model was generated by GitHub copilot

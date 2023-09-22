@@ -38,6 +38,7 @@ n      <- 2e4      # Population size
 preval <- 0.001    # Initial infected fraction
 crate  <- 2.0      # Contact Rate
 trate  <- 0.3      # Transmission prob
+trate_a <- 0.1     # Transmission prob asymptomatic
 incu   <- 7.0      # Avg incubation
 rrate  <- 1.0/7.0  # Recovery rate
 asymrate <- .3     # Fraction of asymptomatic
@@ -60,7 +61,7 @@ set_agents_data(mymodel, isolate)
 # Creating the function for setting the probability of transmission
 fun <- virus_fun_logit(
   vars = c(0L, 1L),
-  coefs = c(-10, dlogis(trate)),
+  coefs = c(qlogis(trate), qlogis(trate_a) - qlogis(trate)),
   mymodel
   )
 
@@ -206,14 +207,14 @@ epicurves[, pick := order(runif(.N)), by = .(date, nviruses)]
 
 epicurves_sample <- epicurves[pick <= 200]
 
-epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[state %in% c("Exposed", "Infected", "Recovered")] |>
     ggplot(aes(x = date, y = counts)) +
     geom_jitter(aes(colour = state), alpha = .1) + 
     geom_smooth(aes(colour = state), method="loess", se = TRUE)
 ```
 
 ```{r totals}
-epicurves_sample[!state %in% c("Exposed", "Infected", "Hospitalized")] |>
+epicurves_sample[!state %in% c("Exposed", "Infected", "Recovered")] |>
     ggplot(aes(x = date, y = counts)) +
     geom_smooth(aes(colour = state), method = "loess", se = TRUE)
     # geom_jitter(aes(colour = status), alpha = .1)
