@@ -1,0 +1,208 @@
+---
+format: gfm
+---
+
+```{r setup, echo = FALSE}
+library(data.table)
+library(ggplot2)
+```
+
+# Description of the model
+
+This is a variation of a SEIRD model, which includes hospitalisations. The specific features follow:
+
+- Two types of network connections: families and bi-partite through entities.
+- Individuals are clustered in groups of five.
+- Each entity houses 100 individuals.
+- Transmission can happen between family members or between entity members.
+- The model draws five entity members per susceptible individual at each step. This represents the chance of direct contact.
+- Only infected non-hospitalized individuals can transmit the disease.
+
+The file [`params.txt`](params.txt) contains the model parameters. The current values are:
+
+```{r listing-params, echo = FALSE}
+params <- readLines("params.txt", warn = FALSE)
+params <- params[grepl("^[^*]", params)]
+params <- data.frame(
+    Parameter = gsub("\\s*[:].+", "", params),
+    Value     = as.numeric(gsub("^[^:]+[:]", "", params))
+)
+knitr::kable(params, row.names = FALSE)
+```
+
+The full program can be found in the file [main.cpp](main.cpp).
+
+# Network data
+
+The following shows the connection network (a sample of 5,000 of the ties.) Agents are connected between them (families) and to entities, with higher chance to entities closer to them.
+
+```{r netplot, cache = TRUE}
+families <- fread("population.txt")
+entities <- fread("agents_entities.txt")
+
+# Getting positions
+fams_pos <- fread("locations_agents.txt")
+enti_pos <- fread("locations_entities.txt")
+enti_pos[, id := id + max(entities$V1 + 1)]
+
+library(igraph)
+set.seed(1231)
+entities[, V2 := V2 + max(V1) + 1]
+gr <- graph_from_edgelist(as.matrix(
+    entities[sample.int(n = .N, size = 5000)]
+    ) + 1)
+
+library(netplot)
+nplot(
+    gr,
+    skip.vertex = TRUE, sample.edges = .25,
+    layout = rbind(
+        as.matrix(fams_pos[, .(lon, lat)]),
+        as.matrix(enti_pos[, .(lon, lat)])
+    ),
+    edge.color = ~ego(alpha = .1) + alter(alpha = 0),
+    vertex.color = "yellow",
+    bg.col = "black"
+    )
+```
+
+# Running the model
+
+```{bash}
+./main.o
+```
+
+# Computing reproductive number
+
+```{r repnum}
+rt <- list.files("saves", pattern = "reproductive", full.names = TRUE)
+rt <- lapply(seq_along(rt), \(i) {cbind(id = i, fread(rt[i]))}) |>
+    rbindlist()
+
+# Computing for each individual
+rt <- rt[, .(rt = mean(rt)), by = c("id", "source_exposure_date")]
+setorder(rt, source_exposure_date)
+
+rt[, pick := order(runif(.N)), by = .(source_exposure_date)]
+rt_sample <- rt[pick <= 200]
+
+ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
+    geom_jitter(alpha = .1, height = 0) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
+
+setorder(rt, id, source_exposure_date, rt)
+fwrite(rt, "reproductive_numbers.csv")
+```
+
+# Generation time
+
+```{r gentime}
+gentime <- list.files("saves", pattern = "gene", full.names = TRUE)
+gentime <- lapply(seq_along(gentime), \(i) {
+    tmp <- cbind(id = i, fread(gentime[i]))
+    tmp[gentime > 0]
+}) |> rbindlist()
+
+gentime <- gentime[, .(gtime = mean(gentime)), by = .(id, source_exposure_date)]
+
+ggplot(gentime, aes(x = source_exposure_date, y = gtime)) +
+    geom_jitter(alpha = .1, height = 0) +
+    geom_smooth(method = "loess", se = TRUE) +
+    lims(y = c(0, 10))
+
+fwrite(gentime, "generation_time.csv")
+```
+
+# New daily cases
+
+Daily cases can be informed through the transition matrix.
+
+```{r transi}
+transition <- list.files("saves", pattern = "transit", full.names = TRUE)
+transition <- lapply(seq_along(transition), \(i) {
+    cbind(id = i, fread(transition[i]))
+}) |> rbindlist()
+
+transition[, ttrans := fifelse(
+    from == "Susceptible" & to == "Exposed",
+    "New exposures",
+    fifelse(
+        from == "Exposed" & to == "Infected",
+        "New infections",
+        fifelse(
+            (from == "Infected" & to == "Recovered") | (from == "Hospitalized" & to == "Recovered"),
+            "New recovered",
+            fifelse(
+                from == "Infected" & to == "Hospitalized",
+                "New hospitalized",
+                fifelse(
+                    from == "Hospitalized" & to == "Deceased",
+                    "New deaths",
+                    "(other)"
+                )
+            )
+        )
+    )
+    )]
+
+# File with transitions
+transition_file <- transition[from != to]
+transition_file <- 
+    transition_file[, transition := paste0(from, "_", to)] |>
+        dcast(id + date ~ transition, value.var = "counts")
+
+fwrite(transition_file, "transitions.csv")
+
+transition <- transition[ttrans != "(other)"]
+
+# sampling
+transition[, pick := order(runif(.N)), by = .(date, ttrans)]
+transition <- transition[pick <= 100]
+transition |>
+    ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = ttrans), alpha = .1) + 
+    geom_smooth(aes(colour = ttrans), method="loess", se = TRUE)
+
+```
+
+# Epi curves
+
+```{r transitions}
+epicurves <- list.files("saves", pattern = "hist", full.names = TRUE)
+epicurves <- lapply(seq_along(epicurves), \(i) {
+    cbind(id = i, fread(epicurves[i]))
+}) |> rbindlist()
+
+fwrite(epicurves, "epicurves.csv")
+
+# Samlping
+epicurves[, pick := order(runif(.N)), by = .(date, nvariants)]
+
+epicurves_sample <- epicurves[pick <= 200]
+
+epicurves_sample[state %in% c("Exposed", "Infected", "Hospitalized")] |>
+    ggplot(aes(x = date, y = counts)) +
+    geom_jitter(aes(colour = state), alpha = .1) + 
+    geom_smooth(aes(colour = state), method="loess", se = TRUE)
+```
+
+```{r totals}
+epicurves_sample[!state %in% c("Exposed", "Infected", "Hospitalized")] |>
+    ggplot(aes(x = date, y = counts)) +
+    geom_smooth(aes(colour = state), method = "loess", se = TRUE)
+    # geom_jitter(aes(colour = status), alpha = .1)
+```
+
+States at the end of the simulation
+
+```{r state-at-the-end}
+epicurves_end <- epicurves[date == max(date)]
+epicurves_end[, .(
+    Avg     = mean(counts),
+    `50%`   = quantile(counts, probs = .5),
+    `2.5%`  = quantile(counts, probs = .025),
+    `97.5%` = quantile(counts, probs = .975)
+    ), by = "state"] |> knitr::kable()
+```
+
