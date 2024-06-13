@@ -197,9 +197,11 @@ ggplot(gentime_sample, aes(x = source_exposure_date, y = gtime)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-    Warning: Removed 1 rows containing non-finite values (`stat_smooth()`).
+    Warning: Removed 1 row containing non-finite outside the scale range
+    (`stat_smooth()`).
 
-    Warning: Removed 1 rows containing missing values (`geom_point()`).
+    Warning: Removed 1 row containing missing values or values outside the scale range
+    (`geom_point()`).
 
 ![](README_files/figure-commonmark/gentime-1.png)
 

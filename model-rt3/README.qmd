@@ -2,7 +2,9 @@
 format: gfm
 ---
 
-```{r setup, echo = FALSE}
+```{r}
+#| label: setup
+#| echo: false
 library(data.table)
 library(ggplot2)
 library(epiworldR)
@@ -30,14 +32,14 @@ The second part of the code creates an instance of the `ModelSEIRCONN` class, na
 
 ```{r}
 #| label: simulate
-#| cache: true
 # Reading in parameters
-n      <- 2e4      # Population size
-preval <- 0.001    # Initial infected fraction
-crate  <- 2.0      # Contact Rate
-trate  <- 0.3      # Transmission prob
-incu   <- 7.0      # Avg incubation
+n      <- 1e5      # Population size
+preval <- 100/n    # Initial infected fraction
+crate  <- 5.0      # Contact Rate
+incu   <- 3.0      # Avg incubation
 rrate  <- 1.0/7.0  # Recovery rate
+R0     <- 1.5      # Basic reproductive number
+trate  <- R0 * rrate / crate
 
 mymodel <- ModelSEIRCONN(
   name              = "SEIR with test",
@@ -58,14 +60,13 @@ saver <- make_saver(
 )
 
 set.seed(331)
-run_multiple(mymodel, ndays = 100, nsims = 200, saver = saver, nthreads = 8)
+run_multiple(mymodel, ndays = 150, nsims = 200, saver = saver, nthreads = 8)
 ```
 
 Looking into the results
 
 ```{r}
 #| label: results
-#| cache: true
 summary(mymodel)
 
 # Retrieving the results
@@ -74,7 +75,8 @@ res <- run_multiple_get_results(mymodel)
 
 # Computing reproductive number
 
-```{r repnum}
+```{r}
+#| label: reproductive-number
 rt <- data.table(res$reproductive)
 
 # Renaming
@@ -89,16 +91,25 @@ rt[, pick := NULL]
 
 ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
     geom_jitter(alpha = .1, height = 0) +
-    geom_smooth(method = "loess", se = TRUE) +
-    lims(y = c(0, 10))
+    geom_smooth(method = "loess", se = TRUE)
 
 setorder(rt, id, source_exposure_date, rt)
 fwrite(rt, "reproductive_numbers.gz", )
 ```
 
+```{r}
+#| label: daily-average-rt
+rt[, .(rt = mean(rt)), by = "source_exposure_date"] |>
+  ggplot(aes(x = source_exposure_date, y = rt)) +
+  geom_line() +
+  geom_abline(slope=0, intercept = R0, linetype = "dashed") +
+  geom_text(aes(label = "R0"), x = 50, y = R0 + 0.1, size = 3)
+```
+
 # Generation time
 
-```{r gentime}
+```{r}
+#| label: generation-time
 gentime <- data.table(res$generation)
 setnames(gentime, "sim_num", "id")
 

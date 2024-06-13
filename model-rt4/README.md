@@ -104,12 +104,12 @@ summary(mymodel)
     Days (duration)     : 100 (of 100)
     Number of viruses   : 1
     Last run elapsed t  : 0.00s
-    Total elapsed t     : 16.00s (200 runs)
-    Last run speed      : 3.20 million agents x day / second
-    Average run speed   : 24.33 million agents x day / second
+    Total elapsed t     : 14.00s (200 runs)
+    Last run speed      : 5.45 million agents x day / second
+    Average run speed   : 27.41 million agents x day / second
     Rewiring            : off
 
-    Global actions:
+    Global events:
      (none)
 
     Virus(es):
@@ -164,11 +164,14 @@ ggplot(rt_sample, aes(x = source_exposure_date, y = rt)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-    Warning: Removed 2 rows containing non-finite values (`stat_smooth()`).
+    Warning: Removed 2 rows containing non-finite outside the scale range
+    (`stat_smooth()`).
 
-    Warning: Removed 2 rows containing missing values (`geom_point()`).
+    Warning: Removed 2 rows containing missing values or values outside the scale range
+    (`geom_point()`).
 
-    Warning: Removed 2 rows containing missing values (`geom_smooth()`).
+    Warning: Removed 2 rows containing missing values or values outside the scale range
+    (`geom_smooth()`).
 
 ![](README_files/figure-commonmark/repnum-1.png)
 
@@ -200,9 +203,11 @@ ggplot(gentime_sample, aes(x = source_exposure_date, y = gtime)) +
 
     `geom_smooth()` using formula = 'y ~ x'
 
-    Warning: Removed 494 rows containing non-finite values (`stat_smooth()`).
+    Warning: Removed 494 rows containing non-finite outside the scale range
+    (`stat_smooth()`).
 
-    Warning: Removed 494 rows containing missing values (`geom_point()`).
+    Warning: Removed 494 rows containing missing values or values outside the scale range
+    (`geom_point()`).
 
 ![](README_files/figure-commonmark/gentime-1.png)
 
