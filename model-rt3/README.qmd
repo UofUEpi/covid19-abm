@@ -33,7 +33,7 @@ The second part of the code creates an instance of the `ModelSEIRCONN` class, na
 ```{r}
 #| label: simulate
 # Reading in parameters
-n      <- 1e5      # Population size
+n      <- 1e6      # Population size
 preval <- 100/n    # Initial infected fraction
 crate  <- 5.0      # Contact Rate
 incu   <- 3.0      # Avg incubation
@@ -60,7 +60,7 @@ saver <- make_saver(
 )
 
 set.seed(331)
-run_multiple(mymodel, ndays = 150, nsims = 200, saver = saver, nthreads = 8)
+run_multiple(mymodel, ndays = 150, nsims = 200, saver = saver, nthreads = 20)
 ```
 
 Looking into the results
