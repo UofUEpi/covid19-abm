@@ -1,0 +1,93 @@
+---
+format: gfm
+title: Example of transmission network
+author: George G. Vega Yon
+date: 2024-07-25
+---
+
+We usee a network SIR model with the following parameters:
+
+- Population size (`N`): 100.
+- Prevalence: 1/`N`.
+- Transmission rate: 0.1.
+- Recovery rate: 1/7.
+
+The underlying network is a erdos-renyi network with average degree 7.
+
+```{r}
+#| label: network
+library(network)
+library(ergm) # Simulating an ERGM network
+library(netplot)
+
+N <- 100
+set.seed(121)
+age <- sample.int(20, N, replace = TRUE) + 15
+
+g   <- network.initialize(N, directed = FALSE)
+g %v% "age" <- age
+g <- simulate_formula(g ~ edges + absdiff("age", pow=1.5), coef = c(0, -1))
+
+nplot(g, vertex.color = ~ age)
+```
+
+```{r}
+el <- network::as.edgelist(g)
+
+library(epiworldR)
+
+# Building the model
+N <- 100
+mymodel <- ModelSIR(
+  name = "COVID-19",
+  prevalence = 2/N,
+  transmission_rate = 0.1,
+  # incubation_days = 2,
+  recovery_rate = 1/7
+)
+
+agents_from_edgelist(
+  model = mymodel,
+  source = as.integer(el[,1] - 1L),
+  target = as.integer(el[,2] - 1L),
+  size = N,
+  directed = FALSE
+)
+```
+
+We now run and visualize the model output
+
+```{r}
+#| label: run-the-model
+run(mymodel, ndays = 50)
+summary(mymodel)
+plot_incidence(mymodel)
+```
+
+The network visualization is done using `netplot`. We use the same layout for both the transmission and contact networks.
+
+```{r}
+library(igraph)
+tnetwork <- get_transmissions(mymodel)
+
+tnet <- graph_from_data_frame(
+  d = tnetwork[, c("source", "target")],
+  vertices = data.frame(name = (1:N) - 1)
+)
+
+set.seed(44)
+lo <- layout_nicely(tnet)
+
+p1 <- nplot(g, layout = lo, skip.vertex = TRUE)
+p2 <- nplot(tnet, layout = lo, skip.vertex=TRUE)
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+Finally, we save the networks using rds files.
+
+```{r}
+#| label: save-networks
+saveRDS(g, "contact-network.rds")
+saveRDS(tnet, "transmission-network.rds")
+```
