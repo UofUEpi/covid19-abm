@@ -105,8 +105,8 @@ summary(mymodel)
     Number of entities  : 0
     Days (duration)     : 50 (of 50)
     Number of viruses   : 1
-    Last run elapsed t  : 104.00µs
-    Last run speed      : 48.08 million agents x day / second
+    Last run elapsed t  : 74.00µs
+    Last run speed      : 67.57 million agents x day / second
     Rewiring            : off
 
     Global events:
@@ -176,10 +176,10 @@ tnet <- graph_from_data_frame(
 )
 
 set.seed(44)
-lo <- layout_nicely(tnet)
+lo <- layout_nicely(intergraph::asIgraph(g))
 
-p1 <- nplot(g, layout = lo, skip.vertex = TRUE)
-p2 <- nplot(tnet, layout = lo, skip.vertex=TRUE)
+p1 <- nplot(g, layout = lo, skip.vertex = FALSE, vertex.size = 1, vertex.size.range = c(.01, .01), vertex.label = NA)
+p2 <- nplot(tnet, layout = lo, skip.vertex=FALSE, vertex.size = 1, vertex.size.range = c(.01, .01), vertex.label = NA)
 
 gridExtra::grid.arrange(p1, p2, ncol = 2)
 ```
