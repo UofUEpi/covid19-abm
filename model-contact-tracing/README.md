@@ -105,8 +105,8 @@ summary(mymodel)
     Number of entities  : 0
     Days (duration)     : 50 (of 50)
     Number of viruses   : 1
-    Last run elapsed t  : 74.00µs
-    Last run speed      : 67.57 million agents x day / second
+    Last run elapsed t  : 75.00µs
+    Last run speed      : 66.67 million agents x day / second
     Rewiring            : off
 
     Global events:
