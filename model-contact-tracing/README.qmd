@@ -12,7 +12,7 @@ We usee a network SIR model with the following parameters:
 - Transmission rate: 0.1.
 - Recovery rate: 1/7.
 
-The underlying network is a erdos-renyi network with average degree 7.
+The underlying network is a homophilic network on age with average degree 11.12.
 
 ```{r}
 #| label: network

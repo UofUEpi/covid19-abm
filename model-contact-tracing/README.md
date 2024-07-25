@@ -9,7 +9,8 @@ We usee a network SIR model with the following parameters:
 - Transmission rate: 0.1.
 - Recovery rate: 1/7.
 
-The underlying network is a erdos-renyi network with average degree 7.
+The underlying network is a homophilic network on age with average
+degree 11.12.
 
 ``` r
 library(network)
@@ -104,8 +105,8 @@ summary(mymodel)
     Number of entities  : 0
     Days (duration)     : 50 (of 50)
     Number of viruses   : 1
-    Last run elapsed t  : 85.00µs
-    Last run speed      : 58.82 million agents x day / second
+    Last run elapsed t  : 104.00µs
+    Last run speed      : 48.08 million agents x day / second
     Rewiring            : off
 
     Global events:
